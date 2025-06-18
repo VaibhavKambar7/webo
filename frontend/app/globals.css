@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.prose-custom h1 {
+  @apply text-xl font-bold mb-3 mt-4 text-gray-900;
+}
+
+.prose-custom h2 {
+  @apply text-lg font-bold mb-2 mt-3 text-gray-900;
+}
+
+.prose-custom h3 {
+  @apply text-base font-semibold mb-1 mt-2 text-gray-800;
+}
+
+.prose-custom p {
+  @apply mb-2 text-gray-700 leading-snug;
+}
+
+.prose-custom ul {
+  @apply list-disc pl-5 mb-3 space-y-1;
+}
+
+.prose-custom ol {
+  @apply list-decimal pl-5 mb-3 space-y-1;
+}
+
+.prose-custom li {
+  @apply text-gray-700 leading-snug;
+}
+
+.prose-custom strong {
+  @apply font-semibold text-gray-900;
+}
+
+.prose-custom em {
+  @apply italic text-gray-600;
+}
+
+.prose-custom code {
+  @apply bg-gray-100 px-1 py-0.5 rounded text-xs font-mono text-gray-800;
+}
+
+.prose-custom blockquote {
+  @apply border-l-4 border-blue-500 pl-3 py-1 bg-gray-50 my-3;
+}
+
+/* For better spacing */
+.prose-custom > * + * {
+  @apply mt-3;
+}
+
+.prose-custom ul > li,
+.prose-custom ol > li {
+  @apply mb-1;
+}
+
+.prose-custom a {
+  @apply text-blue-600 hover:text-blue-800 underline decoration-1 underline-offset-2;
+  transition: color 0.2s ease;
+}
+
+.prose-custom a:hover {
+  @apply decoration-2;
+}
+
+.prose-custom a[href^="http"]:after {
+  content: " ↗";
+  @apply text-xs text-gray-400 ml-1;
+}
+
+.prose-custom a {
+  word-break: break-all;
+  @apply inline;
+}
+
+/* In your global CSS file, e.g., globals.css */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #333; /* Darker track */
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #555; /* Darker thumb */
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #777; /* Lighter thumb on hover */
+}
