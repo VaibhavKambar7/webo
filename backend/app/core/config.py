@@ -9,6 +9,8 @@ class Config:
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     EXA_API_KEY = os.getenv("EXA_API_KEY")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
 
     if not GEMINI_API_KEY:
         raise ValueError("GEMINI_API_KEY is not set")
