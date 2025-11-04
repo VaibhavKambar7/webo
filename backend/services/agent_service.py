@@ -26,7 +26,7 @@ class AgentService:
             action_json = json.loads(response.choices[0].message.content)
             return action_json # Should match {"thought": "...", "action": {"tool": "...", "input": "..."}}
         
-        except Exception as e:
+        except Exception:
             return {
                 "thought": "An error occurred during thinking. Concluding this loop.",
                 "action": {"tool": "final_answer", "input": None}
@@ -35,7 +35,6 @@ class AgentService:
     def _build_react_prompt(self, sub_query: str, memory: List[ReActStep]) -> str:
         """Helper to construct the ReAct prompt."""
         
-        # Convert Pydantic models to simple dicts for the prompt
         history = "\n".join([
             f"Thought: {step.thought}\nAction: {step.action.model_dump_json()}\nObservation: {step.observation}"
             for step in memory

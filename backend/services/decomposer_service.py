@@ -3,7 +3,7 @@ from openai import OpenAI
 from core.config import settings
 from typing import List
 
-class Decomposer:
+class DecomposerService:
     def __init__(self):
         self.client = OpenAI(api_key = settings.OPENAI_API_KEY)
 
