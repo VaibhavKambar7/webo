@@ -1,7 +1,7 @@
 import json
 from openai import OpenAI
-from ..core.config import settings
-from ..core.schemas import ReActStep
+from app.core.config import settings
+from app.core.schemas import ReActStep
 from typing import List, Dict, Any
 
 class AgentService:

@@ -1,12 +1,16 @@
+import uuid
 import json
 import logging
-from fastapi import FastAPI, HTTPException
+from app.core.schemas import AskResponse, QueryRequest, StatusResponse
+from app.core.state_manager import StateManager
+from orchestrator import Orchestrator
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from langchain_core.callbacks import BaseCallbackHandler
-from app.agents.research_agent import ResearchAgent  # Import your ResearchAgent class
+from app.agents.research_agent import ResearchAgent
 from datetime import datetime
-import asyncio # Import asyncio for sleep
+import asyncio
 
 app = FastAPI()
 
@@ -226,3 +230,47 @@ async def research_stream_endpoint(query: str):
 async def web_search_endpoint(query: str):
     """Redirect to research endpoint for backward compatibility"""
     return await research_endpoint(query)
+
+@app.post("/ask", response_model=AskResponse)
+def ask_question(
+    request: QueryRequest,
+    background_tasks: BackgroundTasks
+):
+    """
+    submits a new query, runs the full process in the background, returns a job_id to check for status.
+    """
+    job_id = str(uuid.uuid4())
+    try:
+        state_manager = StateManager(job_id)
+        state_manager.create_job(request.query)
+        
+        orchestrator = Orchestrator(job_id)
+        background_tasks.add_task(orchestrator.run_full_query)
+        
+        return AskResponse(job_id=job_id)
+        
+    except ConnectionError as e:
+        raise HTTPException(status_code=503, detail=f"Service unavailable: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error submitting job: {e}")
+
+@app.get("/status/{job_id}", response_model=StatusResponse)
+def get_status(job_id: str):
+    """
+    poll this endpoint to check the status and get the final answer.
+    """
+    try:
+        state_manager = StateManager(job_id)
+        state = state_manager.get_state()
+        
+        return StatusResponse(
+            job_id=state.job_id,
+            status=state.status,
+            original_query=state.original_query,
+            final_answer=state.final_answer,
+            memory=state.memory
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ConnectionError as e:
+        raise HTTPException(status_code=503, detail=f"Service unavailable: {e}")

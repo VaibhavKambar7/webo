@@ -1,9 +1,9 @@
-from .core.state_manager import StateManager
-from .core.schemas import ReActStep, ReActAction
-from .services.decomposer_service import DecomposerService
-from .services.agent_service import AgentService
-from .services.tool_service import ToolService
-from .services.synthesis_service import SynthesisService
+from app.core.state_manager import StateManager
+from app.core.schemas import ReActStep, ReActAction
+from services.decomposer_service import DecomposerService
+from services.agent_service import AgentService
+from services.tool_service import ToolService
+from services.synthesis_service import SynthesisService
 
 
 class Orchestrator:

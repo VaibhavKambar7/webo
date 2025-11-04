@@ -1,6 +1,6 @@
 import json
 from openai import OpenAI
-from ..core.config import settings
+from app.core.config import settings
 from typing import List
 
 class DecomposerService:

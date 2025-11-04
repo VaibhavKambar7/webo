@@ -1,5 +1,5 @@
-from backend.app.tools.web_searcher import WebSearcher
-from typing import List,Any, Dict
+from app.tools.web_searcher import WebSearcher
+from typing import List, Any, Dict
 
 class ToolService:
     def __init___(self):
