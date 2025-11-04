@@ -23,15 +23,26 @@ class Orchestrator:
             state.status = "DECOMPOSING"
             self.state_manager.save_state(state)
             
-            sub_queries = self.decomposer.split(state.original_query)
-            state.sub_queries = sub_queries
+            search_queries = self.decomposer.split_into_search_queries(state.original_query)
+            state.sub_queries = search_queries
             self.state_manager.save_state(state)
 
             state.status = "WORKING"
             self.state_manager.save_state(state)
-            
-            for sub_q in sub_queries:
-                self._run_react_loop(sub_q, max_steps=4)
+                        
+            for query in search_queries:
+
+                action = ReActAction(tool="web_search", input=query)
+                current_step = ReActStep(
+                    thought=f"Executing planned search: {query}", 
+                    action=action
+                )
+                
+                observation = self.tool.execute(action.tool, action.input)
+                
+                current_step.observation = observation
+                state.memory.append(current_step)
+                self.state_manager.save_state(state)
             
             state = self.state_manager.get_state()
             state.status = "SYNTHESIZING"
@@ -53,27 +64,27 @@ class Orchestrator:
                 self.state_manager.save_state(state)
             except Exception:
                 pass
-
-    def _run_react_loop(self, sub_query: str, max_steps: int = 4):
+    
+    # def _run_react_loop(self, sub_query: str, max_steps: int = 4):
         
-        """Runs the think act observe loop for a single subquery."""
-        for i in range(max_steps):
-            state = self.state_manager.get_state()
+    #     """Runs the think act observe loop for a single subquery."""
+    #     for i in range(max_steps):
+    #         state = self.state_manager.get_state()
 
-            action_data = self.agent.think(sub_query, state.memory)
+    #         action_data = self.agent.think(sub_query, state.memory)
             
-            thought = action_data.get("thought", "No thought provided.")
-            action = ReActAction(**action_data.get("action", {"tool": "final_answer"}))
+    #         thought = action_data.get("thought", "No thought provided.")
+    #         action = ReActAction(**action_data.get("action", {"tool": "final_answer"}))
             
-            current_step = ReActStep(thought=thought, action=action)
+    #         current_step = ReActStep(thought=thought, action=action)
 
-            if action.tool == "final_answer":
-                state.memory.append(current_step)
-                self.state_manager.save_state(state)
-                break
+    #         if action.tool == "final_answer":
+    #             state.memory.append(current_step)
+    #             self.state_manager.save_state(state)
+    #             break
             
-            observation = self.tool.execute(action.tool, action.input)
+    #         observation = self.tool.execute(action.tool, action.input)
             
-            current_step.observation = observation
-            state.memory.append(current_step)
-            self.state_manager.save_state(state)
+    #         current_step.observation = observation
+    #         state.memory.append(current_step)
+    #         self.state_manager.save_state(state)
