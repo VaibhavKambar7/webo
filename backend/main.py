@@ -95,141 +95,141 @@ class StreamingCallbackHandler(BaseCallbackHandler):
 def read_root():
     return {"message": "AI Research Assistant API"}
 
-@app.get("/research")
-async def research_endpoint(query: str):
-    """Non-streaming research endpoint"""
-    try:
-        result = research_agent.research(query)
-        return {
-            "query": result["query"],
-            "answer": result["summary"],
-            "raw_sources": [
-                {
-                    "title": citation["title"],
-                    "url": citation["url"],
-                    "summary": f"Source {citation['id']}: {citation['title']}",
-                    "content": f"Referenced source: {citation['title']} - {citation['url']}"
-                }
-                for citation in result["citations"]
-            ],
-            "sources": [
-                {
-                    "title": citation["title"],
-                    "url": citation["url"]
-                }
-                for citation in result["citations"]
-            ]
-        }
-    except Exception as e:
-        logging.error(f"Research error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# @app.get("/research")
+# async def research_endpoint(query: str):
+#     """Non-streaming research endpoint"""
+#     try:
+#         result = research_agent.research(query)
+#         return {
+#             "query": result["query"],
+#             "answer": result["summary"],
+#             "raw_sources": [
+#                 {
+#                     "title": citation["title"],
+#                     "url": citation["url"],
+#                     "summary": f"Source {citation['id']}: {citation['title']}",
+#                     "content": f"Referenced source: {citation['title']} - {citation['url']}"
+#                 }
+#                 for citation in result["citations"]
+#             ],
+#             "sources": [
+#                 {
+#                     "title": citation["title"],
+#                     "url": citation["url"]
+#                 }
+#                 for citation in result["citations"]
+#             ]
+#         }
+#     except Exception as e:
+#         logging.error(f"Research error: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/research/stream")
-async def research_stream_endpoint(query: str):
-    """Streaming research endpoint that shows thinking process"""
+# @app.get("/research/stream")
+# async def research_stream_endpoint(query: str):
+#     """Streaming research endpoint that shows thinking process"""
     
-    async def generate_research_stream():
-        message_queue = asyncio.Queue()
-        streaming_handler = StreamingCallbackHandler(message_queue)
+#     async def generate_research_stream():
+#         message_queue = asyncio.Queue()
+#         streaming_handler = StreamingCallbackHandler(message_queue)
 
-        async def run_research():
-            try:
-                # Reset collected citations
-                research_agent.collected_citations = {}
+#         async def run_research():
+#             try:
+#                 # Reset collected citations
+#                 research_agent.collected_citations = {}
                 
-                # Citation collector (same as original)
-                class CitationCollectorCallback(BaseCallbackHandler):
-                    def __init__(self, agent_instance):
-                        self.agent_instance = agent_instance
+#                 # Citation collector (same as original)
+#                 class CitationCollectorCallback(BaseCallbackHandler):
+#                     def __init__(self, agent_instance):
+#                         self.agent_instance = agent_instance
 
-                    def on_tool_end(self, output: str, **kwargs):
-                        sources_start = output.find("\nSources:\n")
-                        if sources_start != -1:
-                            sources_raw = output[sources_start + len("\nSources:\n"):].strip()
-                            for line in sources_raw.split("\n"):
-                                import re
-                                match = re.match(r"\[(\d+)\] (.*) \((http.*)\)", line)
-                                if match:
-                                    cit_id = int(match.group(1))
-                                    title = match.group(2)
-                                    url = match.group(3)
-                                    self.agent_instance.collected_citations[cit_id] = {
-                                        "id": cit_id,
-                                        "title": title,
-                                        "url": url,
-                                    }
-                        return None
+#                     def on_tool_end(self, output: str, **kwargs):
+#                         sources_start = output.find("\nSources:\n")
+#                         if sources_start != -1:
+#                             sources_raw = output[sources_start + len("\nSources:\n"):].strip()
+#                             for line in sources_raw.split("\n"):
+#                                 import re
+#                                 match = re.match(r"\[(\d+)\] (.*) \((http.*)\)", line)
+#                                 if match:
+#                                     cit_id = int(match.group(1))
+#                                     title = match.group(2)
+#                                     url = match.group(3)
+#                                     self.agent_instance.collected_citations[cit_id] = {
+#                                         "id": cit_id,
+#                                         "title": title,
+#                                         "url": url,
+#                                     }
+#                         return None
                 
-                citation_collector = CitationCollectorCallback(research_agent)
+#                 citation_collector = CitationCollectorCallback(research_agent)
                 
-                # Execute with both callbacks
-                result = await research_agent.agent_executor.ainvoke( # Use ainvoke for async
-                    {"input": query, "chat_history": []},
-                    {"callbacks": [streaming_handler, citation_collector]}
-                )
+#                 # Execute with both callbacks
+#                 result = await research_agent.agent_executor.ainvoke( # Use ainvoke for async
+#                     {"input": query, "chat_history": []},
+#                     {"callbacks": [streaming_handler, citation_collector]}
+#                 )
                 
-                final_result_data = {
-                    "type": "final_result",
-                    "query": query,
-                    "answer": result.get("output", "No answer generated"),
-                    "raw_sources": [
-                        {
-                            "title": citation["title"],
-                            "url": citation["url"],
-                            "summary": f"Source {citation['id']}: {citation['title']}",
-                            "content": f"Referenced source: {citation['title']} - {citation['url']}"
-                        }
-                        for citation in sorted(research_agent.collected_citations.values(), key=lambda x: x["id"])
-                    ],
-                    "sources": [
-                        {
-                            "title": citation["title"],
-                            "url": citation["url"]
-                        }
-                        for citation in sorted(research_agent.collected_citations.values(), key=lambda x: x["id"])
-                    ],
-                    "thinking_steps": len(streaming_handler.thoughts)
-                }
-                await message_queue.put(json.dumps(final_result_data))
-                await message_queue.put(json.dumps({'type': 'complete'}))
+#                 final_result_data = {
+#                     "type": "final_result",
+#                     "query": query,
+#                     "answer": result.get("output", "No answer generated"),
+#                     "raw_sources": [
+#                         {
+#                             "title": citation["title"],
+#                             "url": citation["url"],
+#                             "summary": f"Source {citation['id']}: {citation['title']}",
+#                             "content": f"Referenced source: {citation['title']} - {citation['url']}"
+#                         }
+#                         for citation in sorted(research_agent.collected_citations.values(), key=lambda x: x["id"])
+#                     ],
+#                     "sources": [
+#                         {
+#                             "title": citation["title"],
+#                             "url": citation["url"]
+#                         }
+#                         for citation in sorted(research_agent.collected_citations.values(), key=lambda x: x["id"])
+#                     ],
+#                     "thinking_steps": len(streaming_handler.thoughts)
+#                 }
+#                 await message_queue.put(json.dumps(final_result_data))
+#                 await message_queue.put(json.dumps({'type': 'complete'}))
 
-            except Exception as e:
-                logging.error(f"Research error: {e}")
-                error_data = {
-                    "type": "error",
-                    "message": str(e),
-                    "query": query
-                }
-                await message_queue.put(json.dumps(error_data))
-                await message_queue.put(json.dumps({'type': 'complete'}))
+#             except Exception as e:
+#                 logging.error(f"Research error: {e}")
+#                 error_data = {
+#                     "type": "error",
+#                     "message": str(e),
+#                     "query": query
+#                 }
+#                 await message_queue.put(json.dumps(error_data))
+#                 await message_queue.put(json.dumps({'type': 'complete'}))
 
-        # Start the research in a background task
-        asyncio.create_task(run_research())
+#         # Start the research in a background task
+#         asyncio.create_task(run_research())
 
-        # Stream messages from the queue
-        while True:
-            message = await message_queue.get()
-            yield f"data: {message}\n\n"
-            if json.loads(message).get('type') == 'complete':
-                break
-            await asyncio.sleep(0.05) # Small delay for smoother streaming
+#         # Stream messages from the queue
+#         while True:
+#             message = await message_queue.get()
+#             yield f"data: {message}\n\n"
+#             if json.loads(message).get('type') == 'complete':
+#                 break
+#             await asyncio.sleep(0.05) # Small delay for smoother streaming
 
-    return StreamingResponse(
-        generate_research_stream(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "*",
-        }
-    )
+#     return StreamingResponse(
+#         generate_research_stream(),
+#         media_type="text/event-stream",
+#         headers={
+#             "Cache-Control": "no-cache",
+#             "Connection": "keep-alive",
+#             "Access-Control-Allow-Origin": "*",
+#             "Access-Control-Allow-Headers": "*",
+#         }
+#     )
 
-# Keep the original web_search endpoint for backward compatibility
-@app.get("/web_search")
-async def web_search_endpoint(query: str):
-    """Redirect to research endpoint for backward compatibility"""
-    return await research_endpoint(query)
+# # Keep the original web_search endpoint for backward compatibility
+# @app.get("/web_search")
+# async def web_search_endpoint(query: str):
+#     """Redirect to research endpoint for backward compatibility"""
+#     return await research_endpoint(query)
 
 @app.post("/ask", response_model=AskResponse)
 def ask_question(
@@ -262,13 +262,16 @@ def get_status(job_id: str):
     try:
         state_manager = StateManager(job_id)
         state = state_manager.get_state()
-        
+
+        # Convert ReActStep objects to dicts for JSON serialization
+        memory_dicts = [step.model_dump() for step in state.memory] if state.memory else None
+
         return StatusResponse(
             job_id=state.job_id,
             status=state.status,
             original_query=state.original_query,
             final_answer=state.final_answer,
-            memory=state.memory
+            memory=memory_dicts
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

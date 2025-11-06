@@ -7,11 +7,9 @@ import {
   FileText,
   Loader2,
   AlertCircle,
-  Brain,
   ChevronDown,
   ChevronUp,
-  MessageSquareText,
-  User,
+  Sparkles,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
@@ -22,16 +20,15 @@ interface Source {
   summary?: string;
 }
 
-interface ThinkingStep {
-  type: string;
-  timestamp: string;
-  tool?: string;
-  tool_input?: string;
-  text?: string;
-  output?: string;
-  log?: string;
-  tool_name?: string;
+interface ReActAction {
+  tool: string;
   input?: string;
+}
+
+interface ReActStep {
+  thought: string;
+  action: ReActAction;
+  observation?: string;
 }
 
 interface ChatMessage {
@@ -39,9 +36,10 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   sources?: Source[];
-  thinkingSteps?: ThinkingStep[];
+  thinkingSteps?: ReActStep[];
   status?: string;
   error?: string;
+  jobId?: string;
 }
 
 export default function Home() {
@@ -51,8 +49,9 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [expandedSource, setExpandedSource] = useState<number | null>(null);
   const [showThinking, setShowThinking] = useState<boolean>(false);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -61,6 +60,68 @@ export default function Home() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, showThinking]);
+
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const pollJobStatus = async (jobId: string, assistantMessageId: string) => {
+    try {
+      const response = await fetch(`http://localhost:8000/status/${jobId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch job status");
+      }
+
+      const data = await response.json();
+
+      setMessages((prevMessages) => {
+        const updatedMessages = [...prevMessages];
+        const currentAssistantMessageIndex = updatedMessages.findIndex(
+          (msg) => msg.id === assistantMessageId,
+        );
+
+        if (currentAssistantMessageIndex === -1) return prevMessages;
+
+        const currentAssistantMessage =
+          updatedMessages[currentAssistantMessageIndex];
+
+        currentAssistantMessage.status = data.status;
+        currentAssistantMessage.thinkingSteps = data.memory || [];
+
+        if (data.final_answer) {
+          currentAssistantMessage.content = data.final_answer;
+        } else {
+          currentAssistantMessage.content = `Status: ${data.status}...`;
+        }
+
+        return updatedMessages;
+      });
+
+      if (data.status === "COMPLETED" || data.status === "FAILED") {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+        setLoading(false);
+
+        if (data.status === "FAILED") {
+          setError("Job failed. Please try again.");
+        }
+      }
+    } catch (err) {
+      console.error("Polling error:", err);
+      setError("Failed to fetch status. Please try again.");
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      setLoading(false);
+    }
+  };
 
   const handleSearch = async () => {
     if (!query.trim() || loading) return;
@@ -82,80 +143,49 @@ export default function Home() {
       {
         id: assistantMessageId,
         role: "assistant",
-        content: "Searching...",
+        content: "Submitting query...",
         thinkingSteps: [],
-        status: "Starting research...",
+        status: "PENDING",
       },
     ]);
 
     try {
-      const eventSource = new EventSource(
-        `http://localhost:8000/research/stream?query=${encodeURIComponent(userMessage.content)}`,
+      const response = await fetch("http://localhost:8000/ask", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query: userMessage.content }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit query");
+      }
+
+      const { job_id } = await response.json();
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMessageId ? { ...msg, jobId: job_id } : msg
+        )
       );
-      eventSourceRef.current = eventSource;
 
-      eventSource.onmessage = (event) => {
-        const eventData = JSON.parse(event.data);
-        setMessages((prevMessages) => {
-          const updatedMessages = [...prevMessages];
-          const currentAssistantMessageIndex = updatedMessages.findIndex(
-            (msg) => msg.id === assistantMessageId,
-          );
+      pollingIntervalRef.current = setInterval(() => {
+        pollJobStatus(job_id, assistantMessageId);
+      }, 1000);
 
-          if (currentAssistantMessageIndex === -1) return prevMessages;
-
-          const currentAssistantMessage =
-            updatedMessages[currentAssistantMessageIndex];
-
-          switch (eventData.type) {
-            case "status":
-              currentAssistantMessage.status = eventData.message;
-              break;
-            case "thinking_step":
-              currentAssistantMessage.thinkingSteps = [
-                ...(currentAssistantMessage.thinkingSteps || []),
-                eventData.data,
-              ];
-              currentAssistantMessage.status = `Thinking: ${formatThinkingStep(eventData.data).title}`;
-              break;
-            case "final_result":
-              currentAssistantMessage.content = eventData.answer;
-              currentAssistantMessage.sources = eventData.raw_sources;
-              currentAssistantMessage.status = "Research complete!";
-              break;
-            case "complete":
-              eventSource.close();
-              setLoading(false);
-              currentAssistantMessage.status = "Research complete!";
-              break;
-            case "error":
-              setError(eventData.message);
-              currentAssistantMessage.error = eventData.message;
-              currentAssistantMessage.content = `Error: ${eventData.message}`;
-              eventSource.close();
-              setLoading(false);
-              break;
-          }
-          return updatedMessages;
-        });
-      };
-
-      eventSource.onerror = (err) => {
-        console.error("EventSource error:", err);
-        setError("Connection error during research. Please try again.");
-        setLoading(false);
-        eventSource.close();
-      };
+      await pollJobStatus(job_id, assistantMessageId);
     } catch (err) {
-      setError("Search failed. Please try again.");
+      console.error("Search error:", err);
+      setError("Failed to submit query. Please try again.");
       setLoading(false);
     }
   };
 
   const stopSearch = () => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
     }
     setLoading(false);
     setMessages((prevMessages) => {
@@ -176,221 +206,203 @@ export default function Home() {
     setExpandedSource(expandedSource === index ? null : index);
   };
 
-  const formatThinkingStep = (step: ThinkingStep) => {
-    switch (step.type) {
-      case "action":
-        return {
-          title: `🔧 Action: ${step.tool}`,
-          content: `Input: ${step.tool_input}\n\nReasoning: ${step.log}`,
-        };
-      case "tool_start":
-        return {
-          title: `🚀 Starting: ${step.tool_name}`,
-          content: `Input: ${step.input}`,
-        };
-      case "tool_end":
-        return {
-          title: `✅ Tool Complete`,
-          content: step.output || "Tool execution finished",
-        };
-      case "thought":
-        return {
-          title: `💭 Thinking`,
-          content: step.text || "",
-        };
-      case "finish":
-        return {
-          title: `🎯 Final Answer Ready`,
-          content: step.log || "Research complete",
-        };
-      default:
-        return {
-          title: `📝 ${step.type}`,
-          content: JSON.stringify(step, null, 2),
-        };
-    }
+  const formatThinkingStep = (step: ReActStep) => {
+    return {
+      title: `${step.action.tool}`,
+      thought: step.thought,
+      actionInput: step.action.input || "N/A",
+      observation: step.observation || "Pending...",
+    };
   };
 
   return (
-    <div className="flex flex-col h-screen bg-neutral-950 text-neutral-100">
-      <header className="py-4 border-b border-neutral-800 text-center">
-        <h1 className="text-2xl font-bold text-neutral-100">
-          AI Research Assistant
-        </h1>
-      </header>
-
-      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-        <div className="max-w-3xl mx-auto space-y-8">
-          {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-neutral-500">
-              <MessageSquareText className="w-16 h-16 mb-4" />
-              <p className="text-lg">Start a new research query below.</p>
-            </div>
-          )}
-
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex items-start gap-4 ${
-                message.role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              {message.role === "assistant" && (
-                <div className="flex-shrink-0 p-2 bg-indigo-600 rounded-full">
-                  <Brain className="w-5 h-5 text-white" />
-                </div>
-              )}
-              <div
-                className={`flex-1 p-4 rounded-lg shadow-md ${
-                  message.role === "user"
-                    ? "bg-blue-700 text-white"
-                    : "bg-neutral-800 text-neutral-100"
-                }`}
-              >
-                <div className="prose prose-invert max-w-none">
-                  <ReactMarkdown>{message.content}</ReactMarkdown>
-                </div>
-                {message.sources && message.sources.length > 0 && (
-                  <div className="mt-4 border-t border-neutral-700 pt-4">
-                    <h3 className="text-md font-semibold mb-2">Sources:</h3>
-                    <ul className="space-y-2">
-                      {message.sources.map((source, index) => (
-                        <li key={index} className="flex items-center text-sm">
-                          <ExternalLink className="w-4 h-4 mr-2 text-neutral-400" />
-                          <a
-                            href={source.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-400 hover:underline break-all"
-                          >
-                            {source.title || source.url}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {message.status && (
-                  <div className="mt-2 text-xs text-neutral-400 italic">
-                    Status: {message.status}
-                  </div>
-                )}
-                {message.error && (
-                  <div className="mt-2 text-xs text-red-400 flex items-center">
-                    <AlertCircle className="w-4 h-4 mr-1" />
-                    Error: {message.error}
-                  </div>
-                )}
-              </div>
-              {message.role === "user" && (
-                <div className="flex-shrink-0 p-2 bg-neutral-600 rounded-full">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-              )}
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      {messages.some(
-        (msg) => msg.thinkingSteps && msg.thinkingSteps.length > 0,
-      ) && (
-        <div className="max-w-3xl mx-auto w-full mb-4 px-4">
-          <div className="bg-neutral-800 rounded-lg shadow-lg border border-neutral-700 overflow-hidden">
-            <div
-              className="bg-neutral-700 px-6 py-3 cursor-pointer flex items-center justify-between"
-              onClick={() => setShowThinking(!showThinking)}
-            >
-              <h2 className="text-lg font-semibold text-neutral-100 flex items-center">
-                <Brain className="w-4 h-4 mr-2" />
-                Thinking Process (
-                {messages.findLast((msg) => msg.thinkingSteps)?.thinkingSteps
-                  ?.length || 0}{" "}
-                steps)
-              </h2>
-              {showThinking ? (
-                <ChevronUp className="w-4 h-4 text-neutral-100" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-neutral-100" />
-              )}
-            </div>
-
-            {showThinking && (
-              <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                <div className="divide-y divide-neutral-700">
-                  {messages
-                    .findLast((msg) => msg.thinkingSteps)
-                    ?.thinkingSteps?.map((step, index) => {
-                      const formatted = formatThinkingStep(step);
-                      return (
-                        <div
-                          key={index}
-                          className="p-4 hover:bg-neutral-700 transition-colors"
-                        >
-                          <div className="flex items-start space-x-3">
-                            <div className="flex-shrink-0 w-6 h-6 bg-indigo-700 rounded-full flex items-center justify-center text-indigo-100 font-semibold text-xs">
-                              {index + 1}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-semibold text-neutral-100 mb-1">
-                                {formatted.title}
-                              </h4>
-                              <div className="text-xs text-neutral-300 whitespace-pre-wrap">
-                                {formatted.content}
-                              </div>
-                              <div className="text-xs text-neutral-500 mt-1">
-                                {new Date(step.timestamp).toLocaleTimeString()}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
-            )}
+    // Updated background color to pure black
+    <div className="min-h-screen bg-black text-white"> 
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <header className="pt-12 pb-8">
+          <div className="flex items-center gap-2 justify-center">
+            {/* Changed Sparkles icon color to a lighter gray for contrast on black */}
+            <Sparkles className="w-7 h-7 text-gray-400" strokeWidth={2} /> 
+            {/* Changed text color to white for better contrast */}
+            <h1 className="text-2xl font-semibold text-white">Research</h1> 
           </div>
-        </div>
-      )}
+        </header>
 
-      <div className="sticky bottom-0 bg-neutral-950 p-4 border-t border-neutral-800">
-        <div className="relative max-w-3xl mx-auto">
-          <div className="flex items-center bg-neutral-800 rounded-xl shadow-lg border border-neutral-700 overflow-hidden">
-            <div className="pl-4 pr-2">
-              <Search className="w-5 h-5 text-neutral-500" />
-            </div>
-            <input
-              type="text"
-              placeholder="Ask me anything..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !loading && handleSearch()}
-              className="flex-1 py-3 px-2 bg-neutral-800 text-neutral-100 placeholder-neutral-500 focus:outline-none text-base"
-              disabled={loading}
-            />
-            {loading ? (
-              <button
-                onClick={stopSearch}
-                className="m-2 px-4 py-2 rounded-lg font-semibold bg-red-600 hover:bg-red-700 text-white transition-all duration-200 flex items-center justify-center"
-              >
-                <Loader2 className="w-4 h-4 animate-spin mr-2" /> Stop
-              </button>
-            ) : (
+        {messages.length === 0 ? (
+          <div className="mt-32">
+            <div className="relative">
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="Ask anything..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !loading && handleSearch()}
+                // Updated input styles for black theme, using gray-900 for background and gray-600 for border
+                className="w-full px-5 py-4 text-base text-gray-50 placeholder-gray-400 bg-gray-900 border border-gray-600 rounded-full shadow-lg focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                disabled={loading}
+              />
               <button
                 onClick={handleSearch}
-                disabled={!query.trim()}
-                className={`m-2 px-4 py-2 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center ${
-                  !query.trim()
-                    ? "bg-neutral-700 text-neutral-500 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg"
-                }`}
+                disabled={!query.trim() || loading}
+                // Changed button color to a subtle gray-700, with hover and disabled states
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-gray-700 text-white rounded-full hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
               >
-                <Search className="w-4 h-4 mr-2" /> Ask
+                <Search className="w-5 h-5" strokeWidth={2} />
               </button>
+            </div>
+            {error && (
+              // Updated error styles for black theme, using red-950 for background and red-600 for border
+              <div className="mt-4 p-3 bg-red-950/50 border border-red-600 rounded-lg flex items-start gap-2 text-sm text-red-300">
+                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
             )}
           </div>
-        </div>
+        ) : (
+          <div className="pb-32">
+            <div className="space-y-8">
+              {messages.map((message, idx) => (
+                <div key={message.id} className="space-y-4">
+                  {message.role === "user" && (
+                    <div className="flex items-start gap-3">
+                      {/* Updated user message colors for black theme, using gray-800 background and gray-200 text */}
+                      <div className="flex-shrink-0 w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-medium text-gray-200">U</span>
+                      </div>
+                      <div className="flex-1 pt-1">
+                        <p className="text-gray-100 text-base leading-relaxed">{message.content}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {message.role === "assistant" && (
+                    <div className="flex items-start gap-3">
+                      {/* Updated assistant message colors for black theme, using gray-900 background with a slight opacity and gray-400 for icon */}
+                      <div className="flex-shrink-0 w-8 h-8 bg-gray-900/50 rounded-full flex items-center justify-center">
+                        <Sparkles className="w-4 h-4 text-gray-400" strokeWidth={2} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {loading && !message.content.includes("Status:") && (
+                          <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Searching...</span>
+                          </div>
+                        )}
+
+                        {message.thinkingSteps && message.thinkingSteps.length > 0 && showThinking && (
+                          <div className="mb-4 space-y-2">
+                            {message.thinkingSteps.map((step, stepIdx) => {
+                              const formatted = formatThinkingStep(step);
+                              return (
+                                <div key={stepIdx} className="flex items-start gap-2 text-xs text-gray-400">
+                                  <Loader2 className="w-3 h-3 mt-0.5 animate-spin flex-shrink-0" />
+                                  <span>{formatted.title}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {message.sources && message.sources.length > 0 && (
+                          <div className="mb-4">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {message.sources.slice(0, 3).map((source, sourceIdx) => (
+                                <a
+                                  key={sourceIdx}
+                                  href={source.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  // Updated source pill styles for black theme, using gray-800 background and gray-600 border
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-full border border-gray-700 transition-colors"
+                                >
+                                  <span className="w-4 h-4 bg-gray-900 rounded border border-gray-700 flex items-center justify-center text-[10px] font-medium text-gray-400">
+                                    {sourceIdx + 1}
+                                  </span>
+                                  <span className="max-w-[200px] truncate">
+                                    {source.title || new URL(source.url).hostname}
+                                  </span>
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Updated prose styles for black theme readability */}
+                        <div className="prose prose-sm max-w-none prose-invert prose-headings:font-semibold prose-headings:text-white prose-p:text-gray-300 prose-p:leading-relaxed prose-a:text-gray-400 prose-a:no-underline hover:prose-a:underline prose-strong:text-white prose-strong:font-semibold prose-ul:text-gray-300 prose-ol:text-gray-300">
+                          <ReactMarkdown>{message.content}</ReactMarkdown>
+                        </div>
+
+                        {message.sources && message.sources.length > 3 && (
+                          <button
+                            onClick={() => setShowThinking(!showThinking)}
+                            className="mt-4 text-sm text-gray-400 hover:text-gray-300 flex items-center gap-1"
+                          >
+                            <span>View all {message.sources.length} sources</span>
+                            {showThinking ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                        )}
+
+                        {message.status && loading && (
+                          <div className="mt-3 text-xs text-gray-400">
+                            {message.status}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div 
+              // Updated fixed input area background for black theme, using black background with gradient to transparent
+              className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black to-transparent pt-8 pb-6"
+            >
+              <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="relative">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    placeholder="Ask a follow up..."
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && !loading && handleSearch()}
+                    // Updated input styles for black theme, using gray-900 for background and gray-600 for border
+                    className="w-full px-5 py-4 pr-12 text-base text-gray-50 placeholder-gray-400 bg-gray-900 border border-gray-600 rounded-full shadow-lg focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                    disabled={loading}
+                  />
+                  {loading ? (
+                    <button
+                      onClick={stopSearch}
+                      // Changed stop button color to a red-700
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-red-700 text-white rounded-full hover:bg-red-600 transition-colors"
+                    >
+                      <div className="w-4 h-4 border-2 border-white"></div>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSearch}
+                      disabled={!query.trim()}
+                      // Changed button color to a subtle gray-700, with hover and disabled states
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-gray-700 text-white rounded-full hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Search className="w-5 h-5" strokeWidth={2} />
+                    </button>
+                  )}
+                </div>
+                {error && (
+                  // Updated error styles for black theme
+                  <div className="mt-3 p-3 bg-red-950/50 border border-red-600 rounded-lg flex items-start gap-2 text-sm text-red-300">
+                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
