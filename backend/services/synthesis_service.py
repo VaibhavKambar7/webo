@@ -15,20 +15,25 @@ class SynthesisService:
         context = self._compile_context(memory)
         
         prompt = f"""
-        You are an AI research assistant. Your task is to provide a comprehensive, synthesized answer to the user's original query, based *only* on the context provided from your research.
+        You are an AI research assistant. Your task is to provide a comprehensive, synthesized answer to the user's original query based on the research context gathered.
 
         User Query: "{original_query}"
 
-        Research Context (from all sub-queries):
+        Research Context (from all searches):
         ---
         {context}
         ---
 
         Instructions:
-        1. Write a clear, concise, and comprehensive answer to the user's query.
-        2. Base your answer *only* on the context provided. Do not use any outside knowledge.
-        3. If the context includes sources (e.g., [Source 1]), cite them in your answer.
-        4. If the context is insufficient, state that.
+        1. Synthesize the information from ALL provided research context to create a comprehensive answer
+        2. If the query asks for a comparison, structure your answer to clearly compare both subjects
+        3. Use specific facts, figures, and details from the research context
+        4. If sources are mentioned in the context (e.g., [Source 1]), reference them naturally in your answer
+        5. Organize your answer with clear sections or bullet points for better readability
+        6. If the research context provides relevant information, use it fully - don't claim insufficient information unless truly lacking
+        7. For comparison queries, include: key differences, similarities, notable achievements, and relevant metrics
+
+        Provide a well-structured, informative answer that directly addresses the user's query.
         """
         
         try:

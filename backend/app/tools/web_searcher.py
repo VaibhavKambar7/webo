@@ -1,4 +1,5 @@
 import logging
+import json
 from typing import Any, Dict, List
 from app.core.config import settings
 from exa_py import Exa
@@ -7,6 +8,13 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# Create a file handler for search results
+file_handler = logging.FileHandler('search_results.log')
+file_handler.setLevel(logging.INFO)
+file_formatter = logging.Formatter('%(asctime)s - %(message)s')
+file_handler.setFormatter(file_formatter)
+logger.addHandler(file_handler)
 
 
 class WebSearcher:
@@ -36,11 +44,17 @@ class WebSearcher:
         """
         performs a search and returns a list of processed results.
         """
-        logger.info(f"Executing search for query: '{query}'")
+        print(f"\n🔍 SEARCHING: {query}")
         try:
             search_results = self.exa_client.search_and_contents(
                 query=query, text=True, num_results=num_results
             )
+
+            # Log to file with pretty formatting
+            logger.info(f"\n{'='*80}\nQUERY: {query}\n{'='*80}")
+            logger.info(f"RAW SEARCH RESULTS:\n{json.dumps(search_results.__dict__, indent=2, default=str)}")
+
+            print(f"✅ Got {len(getattr(search_results, 'results', []))} results")
         except Exception as e:
             logger.error(f"Error with Exa API for query '{query}': {e}")
             return []  

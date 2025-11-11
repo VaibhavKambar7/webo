@@ -14,6 +14,7 @@ class StatusResponse(BaseModel):
     status: Literal["PENDING", "DECOMPOSING", "WORKING", "SYNTHESIZING", "COMPLETED", "FAILED"]
     original_query: str
     final_answer: Optional[str] = None
+    sub_queries: Optional[List[str]] = None
     memory: Optional[List[Dict[str, Any]]] = None # For debugging
 
 # --- Internal State Schemas ---

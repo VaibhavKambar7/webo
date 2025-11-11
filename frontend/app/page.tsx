@@ -3,8 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Search,
-  ExternalLink,
-  FileText,
   Loader2,
   AlertCircle,
   ChevronDown,
@@ -37,6 +35,7 @@ interface ChatMessage {
   content: string;
   sources?: Source[];
   thinkingSteps?: ReActStep[];
+  subQueries?: string[];
   status?: string;
   error?: string;
   jobId?: string;
@@ -49,7 +48,6 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [expandedSource, setExpandedSource] = useState<number | null>(null);
   const [showThinking, setShowThinking] = useState<boolean>(false);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -61,64 +59,62 @@ export default function Home() {
     scrollToBottom();
   }, [messages, showThinking]);
 
-  useEffect(() => {
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
-    };
-  }, []);
-
-  const pollJobStatus = async (jobId: string, assistantMessageId: string) => {
+  const eventStreamer = async (jobId: string, assistantMessageId: string) => {
     try {
-      const response = await fetch(`http://localhost:8000/status/${jobId}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch job status");
-      }
+      const event = new EventSource(`http://localhost:8000/stream/${jobId}`);
 
-      const data = await response.json();
+      event.onmessage = (e) => {
+        const data = JSON.parse(e.data);
 
-      setMessages((prevMessages) => {
-        const updatedMessages = [...prevMessages];
-        const currentAssistantMessageIndex = updatedMessages.findIndex(
-          (msg) => msg.id === assistantMessageId,
-        );
+        // if (!data.ok) {
+        //   throw new Error("Failed to fetch data");
+        // }
 
-        if (currentAssistantMessageIndex === -1) return prevMessages;
+        setMessages((prevMessages) => {
+          const updatedMessages = [...prevMessages];
+          const currentAssistantMessageIndex = updatedMessages.findIndex(
+            (msg) => msg.id === assistantMessageId,
+          );
 
-        const currentAssistantMessage =
-          updatedMessages[currentAssistantMessageIndex];
+          if (currentAssistantMessageIndex === -1) return prevMessages;
 
-        currentAssistantMessage.status = data.status;
-        currentAssistantMessage.thinkingSteps = data.memory || [];
+          const currentAssistantMessage =
+            updatedMessages[currentAssistantMessageIndex];
 
-        if (data.final_answer) {
-          currentAssistantMessage.content = data.final_answer;
-        } else {
-          currentAssistantMessage.content = `Status: ${data.status}...`;
+          currentAssistantMessage.status = data.status;
+          currentAssistantMessage.thinkingSteps = data.memory || [];
+          currentAssistantMessage.subQueries = data.sub_queries || [];
+
+          if (data.final_answer) {
+            currentAssistantMessage.content = data.final_answer;
+          } else {
+            currentAssistantMessage.content = `Status: ${data.status}...`;
+          }
+
+          return updatedMessages;
+        });
+
+        if (data.status === "COMPLETED") {
+          event.close();
+          setError("Job completed.");
+
+          setLoading(false);
+
+          if (data.status === "FAILED") {
+            setError("Job failed. Please try again.");
+          }
         }
 
-        return updatedMessages;
-      });
-
-      if (data.status === "COMPLETED" || data.status === "FAILED") {
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-        }
-        setLoading(false);
-
-        if (data.status === "FAILED") {
-          setError("Job failed. Please try again.");
-        }
-      }
+        event.onerror = (error) => {
+          console.error("EventSource error:", error);
+          event.close();
+          setError("Connection lost. Please try again.");
+          setLoading(false);
+        };
+      };
     } catch (err) {
       console.error("Polling error:", err);
       setError("Failed to fetch status. Please try again.");
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
       setLoading(false);
     }
   };
@@ -166,15 +162,11 @@ export default function Home() {
 
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.id === assistantMessageId ? { ...msg, jobId: job_id } : msg
-        )
+          msg.id === assistantMessageId ? { ...msg, jobId: job_id } : msg,
+        ),
       );
 
-      pollingIntervalRef.current = setInterval(() => {
-        pollJobStatus(job_id, assistantMessageId);
-      }, 1000);
-
-      await pollJobStatus(job_id, assistantMessageId);
+      await eventStreamer(job_id, assistantMessageId);
     } catch (err) {
       console.error("Search error:", err);
       setError("Failed to submit query. Please try again.");
@@ -183,10 +175,6 @@ export default function Home() {
   };
 
   const stopSearch = () => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
     setLoading(false);
     setMessages((prevMessages) => {
       const updatedMessages = [...prevMessages];
@@ -217,14 +205,14 @@ export default function Home() {
 
   return (
     // Updated background color to pure black
-    <div className="min-h-screen bg-black text-white"> 
+    <div className="min-h-screen bg-black text-white">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <header className="pt-12 pb-8">
           <div className="flex items-center gap-2 justify-center">
             {/* Changed Sparkles icon color to a lighter gray for contrast on black */}
-            <Sparkles className="w-7 h-7 text-gray-400" strokeWidth={2} /> 
+            <Sparkles className="w-7 h-7 text-gray-400" strokeWidth={2} />
             {/* Changed text color to white for better contrast */}
-            <h1 className="text-2xl font-semibold text-white">Research</h1> 
+            <h1 className="text-2xl font-semibold text-white">Research</h1>
           </div>
         </header>
 
@@ -237,7 +225,9 @@ export default function Home() {
                 placeholder="Ask anything..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !loading && handleSearch()}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && !loading && handleSearch()
+                }
                 // Updated input styles for black theme, using gray-900 for background and gray-600 for border
                 className="w-full px-5 py-4 text-base text-gray-50 placeholder-gray-400 bg-gray-900 border border-gray-600 rounded-full shadow-lg focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
                 disabled={loading}
@@ -268,10 +258,14 @@ export default function Home() {
                     <div className="flex items-start gap-3">
                       {/* Updated user message colors for black theme, using gray-800 background and gray-200 text */}
                       <div className="flex-shrink-0 w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-gray-200">U</span>
+                        <span className="text-sm font-medium text-gray-200">
+                          U
+                        </span>
                       </div>
                       <div className="flex-1 pt-1">
-                        <p className="text-gray-100 text-base leading-relaxed">{message.content}</p>
+                        <p className="text-gray-100 text-base leading-relaxed">
+                          {message.content}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -280,7 +274,10 @@ export default function Home() {
                     <div className="flex items-start gap-3">
                       {/* Updated assistant message colors for black theme, using gray-900 background with a slight opacity and gray-400 for icon */}
                       <div className="flex-shrink-0 w-8 h-8 bg-gray-900/50 rounded-full flex items-center justify-center">
-                        <Sparkles className="w-4 h-4 text-gray-400" strokeWidth={2} />
+                        <Sparkles
+                          className="w-4 h-4 text-gray-400"
+                          strokeWidth={2}
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         {loading && !message.content.includes("Status:") && (
@@ -290,40 +287,70 @@ export default function Home() {
                           </div>
                         )}
 
-                        {message.thinkingSteps && message.thinkingSteps.length > 0 && showThinking && (
-                          <div className="mb-4 space-y-2">
-                            {message.thinkingSteps.map((step, stepIdx) => {
-                              const formatted = formatThinkingStep(step);
-                              return (
-                                <div key={stepIdx} className="flex items-start gap-2 text-xs text-gray-400">
-                                  <Loader2 className="w-3 h-3 mt-0.5 animate-spin flex-shrink-0" />
-                                  <span>{formatted.title}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
+                        {message.subQueries &&
+                          message.subQueries.length > 1 && (
+                            <div className="mb-4 p-3 bg-gray-900/30 border border-gray-800 rounded-lg">
+                              <div className="text-xs font-medium text-gray-400 mb-2">
+                                Breaking down query into {message.subQueries.length} searches:
+                              </div>
+                              <div className="space-y-1">
+                                {message.subQueries.map((subQuery, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-start gap-2 text-xs text-gray-300"
+                                  >
+                                    <span className="text-gray-500 flex-shrink-0">
+                                      {idx + 1}.
+                                    </span>
+                                    <span>{subQuery}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                        {/* {message.thinkingSteps &&
+                          message.thinkingSteps.length > 0 &&
+                          showThinking && (
+                            <div className="mb-4 space-y-2">
+                              {message.thinkingSteps.map((step, stepIdx) => {
+                                const formatted = formatThinkingStep(step);
+                                return (
+                                  <div
+                                    key={stepIdx}
+                                    className="flex items-start gap-2 text-xs text-gray-400"
+                                  >
+                                    <Loader2 className="w-3 h-3 mt-0.5 animate-spin flex-shrink-0" />
+                                    <span>{formatted.title}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )} */}
 
                         {message.sources && message.sources.length > 0 && (
                           <div className="mb-4">
                             <div className="flex items-center gap-2 flex-wrap">
-                              {message.sources.slice(0, 3).map((source, sourceIdx) => (
-                                <a
-                                  key={sourceIdx}
-                                  href={source.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  // Updated source pill styles for black theme, using gray-800 background and gray-600 border
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-full border border-gray-700 transition-colors"
-                                >
-                                  <span className="w-4 h-4 bg-gray-900 rounded border border-gray-700 flex items-center justify-center text-[10px] font-medium text-gray-400">
-                                    {sourceIdx + 1}
-                                  </span>
-                                  <span className="max-w-[200px] truncate">
-                                    {source.title || new URL(source.url).hostname}
-                                  </span>
-                                </a>
-                              ))}
+                              {message.sources
+                                .slice(0, 3)
+                                .map((source, sourceIdx) => (
+                                  <a
+                                    key={sourceIdx}
+                                    href={source.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    // Updated source pill styles for black theme, using gray-800 background and gray-600 border
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-full border border-gray-700 transition-colors"
+                                  >
+                                    <span className="w-4 h-4 bg-gray-900 rounded border border-gray-700 flex items-center justify-center text-[10px] font-medium text-gray-400">
+                                      {sourceIdx + 1}
+                                    </span>
+                                    <span className="max-w-[200px] truncate">
+                                      {source.title ||
+                                        new URL(source.url).hostname}
+                                    </span>
+                                  </a>
+                                ))}
                             </div>
                           </div>
                         )}
@@ -338,8 +365,14 @@ export default function Home() {
                             onClick={() => setShowThinking(!showThinking)}
                             className="mt-4 text-sm text-gray-400 hover:text-gray-300 flex items-center gap-1"
                           >
-                            <span>View all {message.sources.length} sources</span>
-                            {showThinking ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            <span>
+                              View all {message.sources.length} sources
+                            </span>
+                            {showThinking ? (
+                              <ChevronUp className="w-4 h-4" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4" />
+                            )}
                           </button>
                         )}
 
@@ -356,7 +389,7 @@ export default function Home() {
               <div ref={messagesEndRef} />
             </div>
 
-            <div 
+            <div
               // Updated fixed input area background for black theme, using black background with gradient to transparent
               className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black to-transparent pt-8 pb-6"
             >
@@ -368,7 +401,9 @@ export default function Home() {
                     placeholder="Ask a follow up..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && !loading && handleSearch()}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && !loading && handleSearch()
+                    }
                     // Updated input styles for black theme, using gray-900 for background and gray-600 for border
                     className="w-full px-5 py-4 pr-12 text-base text-gray-50 placeholder-gray-400 bg-gray-900 border border-gray-600 rounded-full shadow-lg focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
                     disabled={loading}
@@ -407,3 +442,18 @@ export default function Home() {
     </div>
   );
 }
+
+
+// - each q has states etc , pending, decomposing etc
+// - we break the q into subq, and show those qs to the FE, then fetch sites , and show the sources
+// - then we list the summary
+// - we also need to show the which content is coming from which source
+
+
+// - first replace polling w server side events
+// - send states , and memory steps
+
+
+// when user sends a query we start this
+// we show the states for me to understand
+// and

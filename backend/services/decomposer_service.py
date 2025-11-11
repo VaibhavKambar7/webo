@@ -12,29 +12,41 @@ class DecomposerService:
         """
         splits a complex query into a list of specific, searchable queries.
         """
-        
-        if len(query.split()) < 5:
-            return [query]
 
         prompt = f"""
-        You are a search query generator. Your job is to break down a complex user query into a list of 3-5 specific, high-quality search queries that can be run on a web search engine.
+        You are a search query decomposition expert. Analyze the user's query and determine if it needs to be broken down into multiple searches.
 
-        User Query: "Compare Rust and Go for web backends in terms of performance and community support"
-        
-        Example Output:
-        {{
+        IMPORTANT RULES:
+        1. ONLY decompose if the query is genuinely complex and requires multiple distinct information searches
+        2. Simple comparisons (e.g., "compare X and Y") should become 2-3 focused searches maximum
+        3. Single-topic questions should NOT be decomposed - return them as-is
+        4. If decomposing, create 2-4 specific search queries (not more than 4)
+        5. Each search query should be concise and focused on a specific aspect
+
+        Examples:
+
+        Query: "What is machine learning?"
+        Output: {{"search_queries": ["What is machine learning?"]}}
+
+        Query: "Compare Elon Musk and Mukesh Ambani"
+        Output: {{"search_queries": ["Elon Musk net worth business ventures 2025", "Mukesh Ambani net worth business ventures 2025"]}}
+
+        Query: "Compare Rust and Go for web backends in terms of performance, community support, and ecosystem"
+        Output: {{
           "search_queries": [
             "Rust vs Go web backend performance benchmarks 2025",
-            "Go web framework (Gin, Echo) performance",
-            "Rust web framework (Actix-web, Rocket) performance",
-            "Rust developer community size vs Go community size",
-            "Go vs Rust for web backend pros and cons"
+            "Rust vs Go community size adoption 2025",
+            "Rust vs Go web frameworks ecosystem comparison"
           ]
         }}
 
-        Respond ONLY with a JSON object containing a "search_queries" list.
-        
+        Query: "What are the best AI startups in 2025?"
+        Output: {{"search_queries": ["best AI startups 2025"]}}
+
+        Now analyze this query:
         User Query: "{query}"
+
+        Respond ONLY with a JSON object containing a "search_queries" list.
         """
         
         try:
