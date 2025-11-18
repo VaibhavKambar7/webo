@@ -19,7 +19,6 @@ class ToolService:
             if tool_name == "web_search":
                 results = self.web_searcher.search_and_scrape(tool_input)
                 observation = self._format_search_results(results)
-                print(f"📝 Formatted observation length: {len(observation)} chars")
 
             else:
                 observation = f"Error: unknown tool '{tool_name}'."
@@ -43,6 +42,7 @@ class ToolService:
                 f"URL: {result.get('url', 'No URL')}\n"
                 f"Favicon: {result.get('favicon', 'No Favicon')}\n"
                 f"Content: {result.get('content', 'No content')}\n"
+                f"Favicon: {result.get('favicon', 'No Favicon')}\n"
             )
 
         return "\n---\n".join(formatted_parts)

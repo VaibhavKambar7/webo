@@ -79,27 +79,3 @@ class Orchestrator:
                 self.state_manager.save_state(state)
             except Exception:
                 pass
-
-    # def _run_react_loop(self, sub_query: str, max_steps: int = 4):
-
-    #     """Runs the think act observe loop for a single subquery."""
-    #     for i in range(max_steps):
-    #         state = self.state_manager.get_state()
-
-    #         action_data = self.agent.think(sub_query, state.memory)
-
-    #         thought = action_data.get("thought", "No thought provided.")
-    #         action = ReActAction(**action_data.get("action", {"tool": "final_answer"}))
-
-    #         current_step = ReActStep(thought=thought, action=action)
-
-    #         if action.tool == "final_answer":
-    #             state.memory.append(current_step)
-    #             self.state_manager.save_state(state)
-    #             break
-
-    #         observation = self.tool.execute(action.tool, action.input)
-
-    #         current_step.observation = observation
-    #         state.memory.append(current_step)
-    #         self.state_manager.save_state(state)

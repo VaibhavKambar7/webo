@@ -24,7 +24,7 @@ class StatusResponse(BaseModel):
     memory: Optional[List[Dict[str, Any]]] = None
 
 
-# --- Internal State Schemas ---
+# internal state schemas
 
 
 class ReActAction(BaseModel):

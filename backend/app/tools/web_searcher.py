@@ -1,5 +1,4 @@
 import logging
-import json
 from typing import Any, Dict, List
 from app.core.config import settings
 from exa_py import Exa
@@ -30,7 +29,7 @@ class WebSearcher:
             logger.error(f"Failed to initialize Exa client: {e}")
             raise
 
-    def _truncate_content(self, text: str, max_chars: int = 1500) -> str:
+    def _truncate_content(self, text: str, max_chars: int = 400) -> str:
         """
         helper to truncate text
         """
@@ -50,9 +49,6 @@ class WebSearcher:
                 query=query, text=True, num_results=num_results
             )
 
-            # Log to file with pretty formatting
-            # logger.info(f"\n{'='*80}\nQUERY: {query}\n{'='*80}")
-            # logger.info(f"RAW SEARCH RESULTS:\n{json.dumps(search_results.__dict__, indent=2, default=str)}")
 
             print(f"✅ Got {len(getattr(search_results, 'results', []))} results")
         except Exception as e:
@@ -61,7 +57,7 @@ class WebSearcher:
 
         processed_results: List[Dict[str, Any]] = []
 
-        for result in getattr(search_results, "results", []):
+        for idx,result in enumerate(getattr(search_results, "results", [])):
             content = getattr(result, "text", None)
 
             if not content:
@@ -72,6 +68,7 @@ class WebSearcher:
 
             processed_results.append(
                 {
+                    "id" : idx,
                     "title": getattr(result, "title", "No Title"),
                     "url": getattr(result, "url", "No URL"),
                     "favicon": getattr(result, "favicon", "No Favicon"),
