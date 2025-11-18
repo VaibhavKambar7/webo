@@ -4,6 +4,7 @@ from app.core.config import settings
 from app.core.schemas import ReActStep
 from typing import List, Dict, Any
 
+
 class AgentService:
     def __init__(self):
         self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -13,32 +14,34 @@ class AgentService:
         (PROMPT) This is the "Think" step of the ReAct loop.
         Decides the next action to take.
         """
-        
+
         # Build the prompt
         prompt = self._build_react_prompt(sub_query, memory)
-        
+
         try:
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"}
+                response_format={"type": "json_object"},
             )
             action_json = json.loads(response.choices[0].message.content)
-            return action_json # Should match {"thought": "...", "action": {"tool": "...", "input": "..."}}
-        
+            return action_json  # Should match {"thought": "...", "action": {"tool": "...", "input": "..."}}
+
         except Exception:
             return {
                 "thought": "An error occurred during thinking. Concluding this loop.",
-                "action": {"tool": "final_answer", "input": None}
+                "action": {"tool": "final_answer", "input": None},
             }
 
     def _build_react_prompt(self, sub_query: str, memory: List[ReActStep]) -> str:
         """Helper to construct the ReAct prompt."""
-        
-        history = "\n".join([
-            f"Thought: {step.thought}\nAction: {step.action.model_dump_json()}\nObservation: {step.observation}"
-            for step in memory
-        ])
+
+        history = "\n".join(
+            [
+                f"Thought: {step.thought}\nAction: {step.action.model_dump_json()}\nObservation: {step.observation}"
+                for step in memory
+            ]
+        )
 
         prompt = f"""
         You are an AI research assistant. Your current goal is to answer the sub-query: "{sub_query}"

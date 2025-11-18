@@ -3,6 +3,7 @@ import json
 from .config import settings
 from .schemas import JobState
 
+
 class StateManager:
     def __init__(self, job_id: str):
         self.job_id = job_id
@@ -11,7 +12,7 @@ class StateManager:
                 host=settings.REDIS_HOST,
                 port=settings.REDIS_PORT,
                 db=0,
-                decode_responses=True
+                decode_responses=True,
             )
             self.redis_client.ping()
         except Exception as e:

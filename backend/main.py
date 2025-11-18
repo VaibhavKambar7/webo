@@ -19,15 +19,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/")
 def read_root():
     return {"message": "webo"}
 
+
 @app.post("/ask", response_model=AskResponse)
-def ask_question(
-    request: QueryRequest,
-    background_tasks: BackgroundTasks
-):
+def ask_question(request: QueryRequest, background_tasks: BackgroundTasks):
     """
     submits a new query, runs the process in the background,
     and returns a job_id to check status later.
@@ -47,6 +46,7 @@ def ask_question(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error submitting job: {e}")
 
+
 @app.get("/status/{job_id}", response_model=StatusResponse)
 def get_status(job_id: str):
     """
@@ -56,7 +56,9 @@ def get_status(job_id: str):
         state_manager = StateManager(job_id)
         state = state_manager.get_state()
 
-        memory_dicts = [step.model_dump() for step in state.memory] if state.memory else None
+        memory_dicts = (
+            [step.model_dump() for step in state.memory] if state.memory else None
+        )
 
         return StatusResponse(
             job_id=state.job_id,
@@ -64,13 +66,14 @@ def get_status(job_id: str):
             original_query=state.original_query,
             final_answer=state.final_answer,
             sub_queries=state.sub_queries,
-            memory=memory_dicts
+            memory=memory_dicts,
         )
 
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ConnectionError as e:
         raise HTTPException(status_code=503, detail=f"Service unavailable: {e}")
+
 
 @app.get("/stream/{job_id}")
 async def event_streamer(job_id: str):
@@ -85,14 +88,17 @@ async def event_streamer(job_id: str):
                 yield f"data:{json.dumps({'type': 'error', 'message': 'Job not found'})}\n\n"
                 break
 
-            memory_dicts = [step.model_dump() for step in state.memory] if state.memory else []
+            memory_dicts = (
+                [step.model_dump() for step in state.memory] if state.memory else []
+            )
 
             state_dict = {
                 "job_id": state.job_id,
                 "status": state.status,
                 "final_answer": state.final_answer,
                 "sub_queries": state.sub_queries,
-                "memory": memory_dicts
+                "sources": state.sources,
+                "memory": memory_dicts,
             }
 
             if state_dict != last_state:
@@ -106,4 +112,3 @@ async def event_streamer(job_id: str):
             # await asyncio.sleep(1.5)
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
-

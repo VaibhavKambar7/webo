@@ -14,8 +14,7 @@ import ReactMarkdown from "react-markdown";
 interface Source {
   title: string;
   url: string;
-  content?: string;
-  summary?: string;
+  favicon?: string;
 }
 
 interface ReActAction {
@@ -66,10 +65,6 @@ export default function Home() {
       event.onmessage = (e) => {
         const data = JSON.parse(e.data);
 
-        // if (!data.ok) {
-        //   throw new Error("Failed to fetch data");
-        // }
-
         setMessages((prevMessages) => {
           const updatedMessages = [...prevMessages];
           const currentAssistantMessageIndex = updatedMessages.findIndex(
@@ -84,6 +79,7 @@ export default function Home() {
           currentAssistantMessage.status = data.status;
           currentAssistantMessage.thinkingSteps = data.memory || [];
           currentAssistantMessage.subQueries = data.sub_queries || [];
+          currentAssistantMessage.sources = data.sources || [];
 
           if (data.final_answer) {
             currentAssistantMessage.content = data.final_answer;

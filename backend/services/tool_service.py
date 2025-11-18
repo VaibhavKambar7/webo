@@ -4,11 +4,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class ToolService:
     def __init__(self):
         self.web_searcher = WebSearcher()
 
-    def execute(self,tool_name:str,tool_input:str) -> str:
+    def execute(self, tool_name: str, tool_input: str) -> str:
         """
         router to execute the correct tool and return a string observation.
         """
@@ -17,8 +18,6 @@ class ToolService:
         try:
             if tool_name == "web_search":
                 results = self.web_searcher.search_and_scrape(tool_input)
-                print(f"📦 Got {len(results)} search results")
-                logger.info(f"Search returned {len(results)} results")
                 observation = self._format_search_results(results)
                 print(f"📝 Formatted observation length: {len(observation)} chars")
 
@@ -29,9 +28,9 @@ class ToolService:
             observation = f"Error executing tool {tool_name}: {e}"
             logger.error(f"Tool execution error: {e}")
 
-        return observation
+        return observation, results
 
-    def _format_search_results(self, results: List[Dict[str,Any]]) -> str:
+    def _format_search_results(self, results: List[Dict[str, Any]]) -> str:
         """Converts search results into a simple string for the LLM."""
         if not results:
             return "No search results found."
@@ -42,6 +41,7 @@ class ToolService:
                 f"[Source {idx}]\n"
                 f"Title: {result.get('title', 'No title')}\n"
                 f"URL: {result.get('url', 'No URL')}\n"
+                f"Favicon: {result.get('favicon', 'No Favicon')}\n"
                 f"Content: {result.get('content', 'No content')}\n"
             )
 

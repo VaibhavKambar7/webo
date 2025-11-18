@@ -3,11 +3,11 @@ from openai import OpenAI
 from app.core.config import settings
 from typing import List
 
+
 class DecomposerService:
     def __init__(self):
-        self.client = OpenAI(api_key = settings.OPENAI_API_KEY)
+        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
-    
     def split_into_search_queries(self, query: str) -> List[str]:
         """
         splits a complex query into a list of specific, searchable queries.
@@ -48,20 +48,20 @@ class DecomposerService:
 
         Respond ONLY with a JSON object containing a "search_queries" list.
         """
-        
+
         try:
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"}
+                response_format={"type": "json_object"},
             )
             result = json.loads(response.choices[0].message.content)
-            
+
             if isinstance(result, dict):
                 key = next(iter(result))
                 return result.get(key, [query])
             return result
-        
+
         except Exception as e:
             print(f"Error in decomposer, falling back to single query: {e}")
             return [query]

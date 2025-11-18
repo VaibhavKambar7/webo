@@ -10,9 +10,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Create a file handler for search results
-file_handler = logging.FileHandler('search_results.log')
+file_handler = logging.FileHandler("search_results.log")
 file_handler.setLevel(logging.INFO)
-file_formatter = logging.Formatter('%(asctime)s - %(message)s')
+file_formatter = logging.Formatter("%(asctime)s - %(message)s")
 file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
 
@@ -51,19 +51,19 @@ class WebSearcher:
             )
 
             # Log to file with pretty formatting
-            logger.info(f"\n{'='*80}\nQUERY: {query}\n{'='*80}")
-            logger.info(f"RAW SEARCH RESULTS:\n{json.dumps(search_results.__dict__, indent=2, default=str)}")
+            # logger.info(f"\n{'='*80}\nQUERY: {query}\n{'='*80}")
+            # logger.info(f"RAW SEARCH RESULTS:\n{json.dumps(search_results.__dict__, indent=2, default=str)}")
 
             print(f"✅ Got {len(getattr(search_results, 'results', []))} results")
         except Exception as e:
             logger.error(f"Error with Exa API for query '{query}': {e}")
-            return []  
+            return []
 
         processed_results: List[Dict[str, Any]] = []
 
         for result in getattr(search_results, "results", []):
             content = getattr(result, "text", None)
-            
+
             if not content:
                 logger.warning(f"Skipping result with no content: {result.url}")
                 continue
@@ -74,6 +74,7 @@ class WebSearcher:
                 {
                     "title": getattr(result, "title", "No Title"),
                     "url": getattr(result, "url", "No URL"),
+                    "favicon": getattr(result, "favicon", "No Favicon"),
                     "content": truncated_content,
                 }
             )
