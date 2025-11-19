@@ -94,6 +94,6 @@ async def event_streamer(job_id: str):
             yield f"data:{json.dumps({{'type': 'completed'}})}\n\n"
 
         except Exception as e:
-            yield f"data:{json.dumps({{'type': 'error', 'message': str(e)}})}\n\n"
+            yield f"data:{json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

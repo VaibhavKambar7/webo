@@ -56,9 +56,18 @@ export default function Home() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const prevMessagesLengthRef = useRef(messages.length);
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    const shouldScroll =
+      messages.length !== prevMessagesLengthRef.current ||
+      (loading && messages.length > 0);
+
+    if (shouldScroll) {
+      scrollToBottom();
+    }
+
+    prevMessagesLengthRef.current = messages.length;
+  }, [messages, loading]);
 
   useEffect(() => {
     if (!loading && inputRef.current) {
