@@ -1,12 +1,13 @@
-from openai import OpenAI
 from app.core.config import settings
 from app.core.schemas import ReActStep
 from typing import List
+import google.generativeai as genai
 
 
 class SynthesisService:
     def __init__(self):
-        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        self.model = genai.GenerativeModel("gemini-2.5-flash-lite")
 
     def summarize(self, original_query: str, memory: List[ReActStep]) -> str:
         """
@@ -38,12 +39,8 @@ class SynthesisService:
         """
 
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
-            )
-            return response.choices[0].message.content
+            response = self.model.generate_content(prompt)
+            return response.text
         except Exception as e:
             return f"Error during final synthesis: {e}"
 

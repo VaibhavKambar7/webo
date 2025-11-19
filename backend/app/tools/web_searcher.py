@@ -49,7 +49,6 @@ class WebSearcher:
                 query=query, text=True, num_results=num_results
             )
 
-
             print(f"✅ Got {len(getattr(search_results, 'results', []))} results")
         except Exception as e:
             logger.error(f"Error with Exa API for query '{query}': {e}")
@@ -57,7 +56,7 @@ class WebSearcher:
 
         processed_results: List[Dict[str, Any]] = []
 
-        for idx,result in enumerate(getattr(search_results, "results", [])):
+        for idx, result in enumerate(getattr(search_results, "results", [])):
             content = getattr(result, "text", None)
 
             if not content:
@@ -68,7 +67,7 @@ class WebSearcher:
 
             processed_results.append(
                 {
-                    "id" : idx,
+                    "id": idx,
                     "title": getattr(result, "title", "No Title"),
                     "url": getattr(result, "url", "No URL"),
                     "favicon": getattr(result, "favicon", "No Favicon"),

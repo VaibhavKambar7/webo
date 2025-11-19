@@ -52,7 +52,6 @@ class Orchestrator:
 
                     state.sources.extend(source_citations)
 
-
                 current_step.observation = observation
                 state.memory.append(current_step)
                 self.state_manager.save_state(state)
