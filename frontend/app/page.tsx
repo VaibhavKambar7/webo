@@ -438,7 +438,7 @@ export default function Home() {
                           </div>
                         )}
 
-                        {!message.content &&
+                        {/* {!message.content &&
                           loading &&
                           message.status !== "COMPLETED" && (
                             <div className="flex items-center gap-3 text-gray-500 py-4">
@@ -447,7 +447,7 @@ export default function Home() {
                                 Gathering information...
                               </span>
                             </div>
-                          )}
+                          )} */}
                       </div>
                     </div>
                   )}

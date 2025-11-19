@@ -60,12 +60,19 @@ class Orchestrator:
 
             state = self.state_manager.get_state()
             state.status = "SYNTHESIZING"
-            self.state_manager.save_state(state)
+            yield state
 
-            final_answer = self.synthesis.summarize(state.original_query, state.memory)
+            state.final_answer = ""
 
-            state.final_answer = final_answer
+            for chunk in self.synthesis.summarize_stream(
+                state.original_query, state.memory
+            ):
+                state.final_answer += chunk
+                yield state
+
             state.status = "COMPLETED"
+            yield state
+
             self.state_manager.save_state(state)
             print(f"Job {self.job_id} completed.")
 
@@ -76,5 +83,6 @@ class Orchestrator:
                 state.status = "FAILED"
                 state.error = str(e)
                 self.state_manager.save_state(state)
+                yield state
             except Exception:
                 pass

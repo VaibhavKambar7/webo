@@ -38,7 +38,7 @@ class WebSearcher:
         return text[:max_chars] + "..." if len(text) > max_chars else text
 
     def search_and_scrape(
-        self, query: str, num_results: int = 5
+        self, query: str, num_results: int = 1
     ) -> List[Dict[str, Any]]:
         """
         performs a search and returns a list of processed results.

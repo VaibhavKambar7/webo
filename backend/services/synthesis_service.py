@@ -9,7 +9,7 @@ class SynthesisService:
         genai.configure(api_key=settings.GEMINI_API_KEY)
         self.model = genai.GenerativeModel("gemini-2.5-flash-lite")
 
-    def summarize(self, original_query: str, memory: List[ReActStep]) -> str:
+    def summarize_stream(self, original_query: str, memory: List[ReActStep]) -> str:
         """
         (PROMPT) Summarizes all observations into a final answer.
         """
@@ -39,10 +39,14 @@ class SynthesisService:
         """
 
         try:
-            response = self.model.generate_content(prompt)
-            return response.text
+            response = self.model.generate_content(prompt, stream=True)
+
+            for chunk in response:
+                if chunk.text:
+                    yield chunk.text
+
         except Exception as e:
-            return f"Error during final synthesis: {e}"
+            return f"Error during synthesis: {e}"
 
     def _compile_context(self, memory: List[ReActStep]) -> str:
         """Combines all observations into a single context block."""

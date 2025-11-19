@@ -9,7 +9,6 @@ from fastapi.responses import StreamingResponse
 
 app = FastAPI()
 
-# Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,16 +26,12 @@ def read_root():
 @app.post("/ask", response_model=AskResponse)
 def ask_question(request: QueryRequest, background_tasks: BackgroundTasks):
     """
-    submits a new query, runs the process in the background,
-    and returns a job_id to check status later.
+    submits a new query and returns a job_id for streaming.
     """
     job_id = str(uuid.uuid4())
     try:
         state_manager = StateManager(job_id)
         state_manager.create_job(request.query)
-
-        orchestrator = Orchestrator(job_id)
-        background_tasks.add_task(orchestrator.run_full_query)
 
         return AskResponse(job_id=job_id)
 
@@ -77,37 +72,28 @@ def get_status(job_id: str):
 @app.get("/stream/{job_id}")
 async def event_streamer(job_id: str):
     async def event_stream():
-        last_state = []
-        state_manager = StateManager(job_id)
+        orchestrator = Orchestrator(job_id)
 
-        while True:
-            try:
-                state = state_manager.get_state()
-            except ValueError:
-                yield f"data:{json.dumps({'type': 'error', 'message': 'Job not found'})}\n\n"
-                break
+        try:
+            for state in orchestrator.run_full_query():
+                memory_dicts = (
+                    [step.model_dump() for step in state.memory] if state.memory else []
+                )
 
-            memory_dicts = (
-                [step.model_dump() for step in state.memory] if state.memory else []
-            )
+                state_dict = {
+                    "job_id": state.job_id,
+                    "status": state.status,
+                    "final_answer": state.final_answer,
+                    "sub_queries": state.sub_queries,
+                    "sources": state.sources,
+                    "memory": memory_dicts,
+                }
 
-            state_dict = {
-                "job_id": state.job_id,
-                "status": state.status,
-                "final_answer": state.final_answer,
-                "sub_queries": state.sub_queries,
-                "sources": state.sources,
-                "memory": memory_dicts,
-            }
-
-            if state_dict != last_state:
                 yield f"data:{json.dumps(state_dict)}\n\n"
-                last_state = state_dict
 
-            if state_dict["status"] in ("COMPLETED", "FAILED"):
-                yield f"data:{json.dumps({'type': 'completed'})}\n\n"
-                break
+            yield f"data:{json.dumps({{'type': 'completed'}})}\n\n"
 
-            # await asyncio.sleep(1.5)
+        except Exception as e:
+            yield f"data:{json.dumps({{'type': 'error', 'message': str(e)}})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
