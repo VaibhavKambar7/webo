@@ -3,13 +3,13 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Search,
-  Loader2,
+  Loader,
   AlertCircle,
   ChevronDown,
   ChevronUp,
-  Sparkles,
-  ExternalLink,
-  RefreshCw,
+  Layers,
+  ArrowUp,
+  StopCircle,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
@@ -40,15 +40,24 @@ interface ChatMessage {
   status?: string;
   error?: string;
   jobId?: string;
-  isSourcesExpanded?: boolean;
-  isThinkingExpanded?: boolean;
+  isExpanded?: boolean;
 }
+
+const getFaviconUrl = (url: string) => {
+  try {
+    const hostname = new URL(url).hostname;
+    return `https://www.google.com/s2/favicons?domain=${hostname}&sz=64`;
+  } catch (e) {
+    return "";
+  }
+};
 
 export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [query, setQuery] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -100,10 +109,12 @@ export default function Home() {
           currentAssistantMessage.subQueries = data.sub_queries || [];
           currentAssistantMessage.sources = data.sources || [];
 
+          if (data.final_answer && !currentAssistantMessage.content) {
+            currentAssistantMessage.isExpanded = false;
+          }
+
           if (data.final_answer) {
             currentAssistantMessage.content = data.final_answer;
-          } else if (data.status) {
-            currentAssistantMessage.content = "";
           }
 
           return updatedMessages;
@@ -112,6 +123,16 @@ export default function Home() {
         if (data.status === "COMPLETED" || data.status === "FAILED") {
           eventSource.close();
           setLoading(false);
+
+          if (data.status === "COMPLETED") {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId
+                  ? { ...msg, isExpanded: false }
+                  : msg,
+              ),
+            );
+          }
 
           if (data.status === "FAILED") {
             setError("Job failed. Please try again.");
@@ -155,6 +176,7 @@ export default function Home() {
         thinkingSteps: [],
         status: "PENDING",
         sources: [],
+        isExpanded: true,
       },
     ]);
 
@@ -205,22 +227,10 @@ export default function Home() {
     });
   };
 
-  const toggleSourceExpansion = (messageId: string) => {
+  const toggleExpansion = (messageId: string) => {
     setMessages((prev) =>
       prev.map((msg) =>
-        msg.id === messageId
-          ? { ...msg, isSourcesExpanded: !msg.isSourcesExpanded }
-          : msg,
-      ),
-    );
-  };
-
-  const toggleThinkingExpansion = (messageId: string) => {
-    setMessages((prev) =>
-      prev.map((msg) =>
-        msg.id === messageId
-          ? { ...msg, isThinkingExpanded: !msg.isThinkingExpanded }
-          : msg,
+        msg.id === messageId ? { ...msg, isExpanded: !msg.isExpanded } : msg,
       ),
     );
   };
@@ -228,27 +238,55 @@ export default function Home() {
   const getStatusDisplay = (status?: string) => {
     if (!status) return null;
 
-    const statusMap: Record<string, { label: string; icon: any }> = {
-      PENDING: { label: "Initializing...", icon: Loader2 },
-      DECOMPOSING: { label: "Breaking down query...", icon: RefreshCw },
-      SEARCHING: { label: "Searching sources...", icon: Search },
-      PROCESSING: { label: "Analyzing results...", icon: RefreshCw },
-      COMPLETED: { label: "Complete", icon: null },
-      FAILED: { label: "Failed", icon: AlertCircle },
-      STOPPED: { label: "Stopped", icon: null },
+    const statusMap: Record<
+      string,
+      { label: string; icon: any; color: string }
+    > = {
+      PENDING: {
+        label: "Initializing...",
+        icon: Loader,
+        color: "text-gray-400",
+      },
+      DECOMPOSING: {
+        label: "Breaking down request...",
+        icon: Layers,
+        color: "text-blue-600",
+      },
+      SEARCHING: {
+        label: "Searching internet...",
+        icon: Search,
+        color: "text-blue-600",
+      },
+      PROCESSING: {
+        label: "Analyzing sources...",
+        icon: Loader,
+        color: "text-purple-600",
+      },
+      COMPLETED: { label: "Completed", icon: null, color: "text-green-600" },
+      FAILED: { label: "Failed", icon: AlertCircle, color: "text-red-600" },
+      STOPPED: { label: "Stopped", icon: StopCircle, color: "text-yellow-600" },
     };
 
     const statusInfo = statusMap[status] || {
       label: status,
-      icon: Loader2,
+      icon: Loader,
+      color: "text-gray-400",
     };
     const Icon = statusInfo.icon;
 
     return (
-      <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
+      <div
+        className={`flex items-center gap-2 text-sm ${statusInfo.color} font-medium mb-4`}
+      >
         {Icon && (
           <Icon
-            className={`w-4 h-4 ${status !== "FAILED" && status !== "STOPPED" ? "animate-spin" : ""}`}
+            className={`w-4 h-4 ${
+              status !== "FAILED" &&
+              status !== "STOPPED" &&
+              status !== "COMPLETED"
+                ? "animate-spin"
+                : ""
+            }`}
           />
         )}
         <span>{statusInfo.label}</span>
@@ -257,258 +295,349 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <header className="sticky top-0 z-10 bg-black/80 backdrop-blur-sm border-b border-gray-800 py-4">
-          <div className="flex items-center gap-2 justify-center">
-            <Sparkles className="w-6 h-6 text-blue-400" strokeWidth={2} />
-            <h1 className="text-xl font-semibold text-white">Webo</h1>
-          </div>
-        </header>
+    <>
+      <style jsx global>{`
+        /* Light Theme Markdown Styles */
+        .markdown-content > *:first-child {
+          margin-top: 0;
+        }
+        .markdown-content > *:last-child {
+          margin-bottom: 0;
+        }
 
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-[calc(100vh-120px)]">
-            <div className="w-full max-w-2xl space-y-8">
-              <div className="text-center space-y-3">
-                <h2 className="text-4xl font-bold text-white">
-                  What can I help you research?
-                </h2>
-                <p className="text-lg text-gray-400">
-                  Ask me anything and I'll search the web for answers
-                </p>
-              </div>
+        .markdown-content p {
+          margin-bottom: 1.25rem;
+          line-height: 1.75;
+          color: #374151; /* gray-700 */
+        }
 
-              <div className="relative">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  placeholder="Ask anything..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) =>
-                    e.key === "Enter" && !loading && handleSearch()
-                  }
-                  className="w-full px-6 py-4 text-base text-gray-50 placeholder-gray-500 bg-gray-900 border border-gray-700 rounded-xl shadow-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                  disabled={loading}
-                />
-                <button
-                  onClick={handleSearch}
-                  disabled={!query.trim() || loading}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Search className="w-5 h-5" strokeWidth={2} />
-                </button>
-              </div>
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3,
+        .markdown-content h4 {
+          margin-top: 2rem;
+          margin-bottom: 1rem;
+          font-weight: 600;
+          color: #111827; /* gray-900 */
+          line-height: 1.3;
+        }
 
-              {error && (
-                <div className="p-4 bg-red-950/30 border border-red-800 rounded-xl flex items-start gap-3 text-sm text-red-300">
-                  <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                  <span>{error}</span>
+        .markdown-content h1 {
+          font-size: 1.5rem;
+        }
+        .markdown-content h2 {
+          font-size: 1.25rem;
+        }
+        .markdown-content h3 {
+          font-size: 1.125rem;
+        }
+
+        .markdown-content ul,
+        .markdown-content ol {
+          margin-bottom: 1.25rem;
+          padding-left: 1.5rem;
+          color: #374151;
+        }
+
+        .markdown-content li {
+          margin-bottom: 0.5rem;
+          padding-left: 0.25rem;
+        }
+
+        .markdown-content li::marker {
+          color: #9ca3af; /* gray-400 */
+        }
+
+        .markdown-content a {
+          color: #2563eb; /* blue-600 */
+          text-decoration: none;
+          cursor: pointer;
+        }
+        .markdown-content a:hover {
+          text-decoration: underline;
+        }
+
+        .markdown-content code {
+          background-color: #f3f4f6; /* gray-100 */
+          color: #1f2937; /* gray-800 */
+          padding: 0.2em 0.4em;
+          border-radius: 0.25rem;
+          font-size: 0.875em;
+          font-family:
+            ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+
+        .markdown-content pre {
+          background-color: #1f2937; /* gray-800 */
+          padding: 1rem;
+          border-radius: 0.5rem;
+          overflow-x: auto;
+          margin-bottom: 1.5rem;
+        }
+
+        .markdown-content pre code {
+          background-color: transparent;
+          color: #f3f4f6; /* gray-100 */
+          padding: 0;
+          font-size: 0.875em;
+        }
+
+        .markdown-content blockquote {
+          border-left: 4px solid #e5e7eb; /* gray-200 */
+          padding-left: 1rem;
+          margin-bottom: 1.25rem;
+          font-style: italic;
+          color: #6b7280; /* gray-500 */
+        }
+
+        .markdown-content strong {
+          color: #111827; /* gray-900 */
+          font-weight: 600;
+        }
+      `}</style>
+
+      <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-h-[60vh]">
+              <div className="w-full max-w-lg space-y-8">
+                <div className="text-center space-y-2">
+                  <h2 className="text-3xl font-semibold text-gray-900 tracking-tight">
+                    WEBO
+                  </h2>
+                  <p className="text-gray-500 text-lg">
+                    Ask complex questions. Get comprehensive answers.
+                  </p>
                 </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="py-6 pb-32">
-            <div className="space-y-6">
-              {messages.map((message) => (
-                <div key={message.id} className="space-y-4">
-                  {message.role === "user" && (
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                        <span className="text-sm font-semibold text-white">
-                          U
-                        </span>
-                      </div>
-                      <div className="flex-1 pt-1">
-                        <p className="text-gray-100 text-base leading-relaxed">
-                          {message.content}
-                        </p>
-                      </div>
-                    </div>
-                  )}
 
-                  {message.role === "assistant" && (
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-gray-800 to-gray-900 rounded-full flex items-center justify-center shadow-lg border border-gray-700">
-                        <Sparkles
-                          className="w-4 h-4 text-blue-400"
-                          strokeWidth={2}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-4">
-                        {loading &&
-                          message.status &&
-                          message.status !== "COMPLETED" &&
-                          getStatusDisplay(message.status)}
-
-                        {message.subQueries &&
-                          message.subQueries.length > 0 && (
-                            <div className="p-4 bg-gray-900/50 border border-gray-800 rounded-xl">
-                              <button
-                                onClick={() =>
-                                  toggleThinkingExpansion(message.id)
-                                }
-                                className="flex items-center justify-between w-full text-left"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <RefreshCw className="w-4 h-4 text-blue-400" />
-                                  <span className="text-sm font-medium text-gray-300">
-                                    Breaking down into{" "}
-                                    {message.subQueries.length} sub-queries
-                                  </span>
-                                </div>
-                                {message.isThinkingExpanded ? (
-                                  <ChevronUp className="w-4 h-4 text-gray-500" />
-                                ) : (
-                                  <ChevronDown className="w-4 h-4 text-gray-500" />
-                                )}
-                              </button>
-
-                              {message.isThinkingExpanded && (
-                                <div className="mt-3 space-y-2 pl-6">
-                                  {message.subQueries.map((subQuery, idx) => (
-                                    <div
-                                      key={idx}
-                                      className="flex items-start gap-3 text-sm text-gray-400"
-                                    >
-                                      <span className="flex-shrink-0 w-5 h-5 bg-gray-800 rounded-full flex items-center justify-center text-xs text-gray-500 font-medium">
-                                        {idx + 1}
-                                      </span>
-                                      <span className="flex-1">{subQuery}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                        {message.sources && message.sources.length > 0 && (
-                          <div>
-                            <div className="flex items-center gap-2 mb-3">
-                              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                                Sources
-                              </span>
-                              <div className="flex-1 h-px bg-gray-800"></div>
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {message.sources
-                                .slice(
-                                  0,
-                                  message.isSourcesExpanded
-                                    ? message.sources.length
-                                    : 5,
-                                )
-                                .map((source, sourceIdx) => (
-                                  <a
-                                    key={sourceIdx}
-                                    href={source.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="group inline-flex items-center gap-2 px-3 py-2 text-xs text-gray-300 bg-gray-900 hover:bg-gray-800 rounded-lg border border-gray-800 hover:border-gray-700 transition-all"
-                                  >
-                                    <span className="flex-shrink-0 w-5 h-5 bg-gray-800 rounded border border-gray-700 flex items-center justify-center text-[10px] font-semibold text-blue-400">
-                                      {sourceIdx + 1}
-                                    </span>
-                                    <span className="max-w-[180px] truncate">
-                                      {source.title ||
-                                        new URL(source.url).hostname}
-                                    </span>
-                                    <ExternalLink className="w-3 h-3 text-gray-500 group-hover:text-gray-400 transition-colors" />
-                                  </a>
-                                ))}
-                            </div>
-
-                            {message.sources.length > 5 && (
-                              <button
-                                onClick={() =>
-                                  toggleSourceExpansion(message.id)
-                                }
-                                className="mt-3 text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
-                              >
-                                <span>
-                                  {message.isSourcesExpanded
-                                    ? "Show less"
-                                    : `View all ${message.sources.length} sources`}
-                                </span>
-                                {message.isSourcesExpanded ? (
-                                  <ChevronUp className="w-4 h-4" />
-                                ) : (
-                                  <ChevronDown className="w-4 h-4" />
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        {message.content && (
-                          <div className="prose prose-sm max-w-none prose-invert prose-headings:font-semibold prose-headings:text-white prose-headings:mb-3 prose-p:text-gray-300 prose-p:leading-relaxed prose-p:mb-4 prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline prose-strong:text-white prose-strong:font-semibold prose-ul:text-gray-300 prose-ul:ml-4 prose-ol:text-gray-300 prose-ol:ml-4 prose-li:mb-1 prose-code:text-blue-400 prose-code:bg-gray-900 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-gray-900 prose-pre:border prose-pre:border-gray-800 prose-blockquote:border-l-blue-500 prose-blockquote:text-gray-400">
-                            <ReactMarkdown>{message.content}</ReactMarkdown>
-                          </div>
-                        )}
-
-                        {/* {!message.content &&
-                          loading &&
-                          message.status !== "COMPLETED" && (
-                            <div className="flex items-center gap-3 text-gray-500 py-4">
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                              <span className="text-sm">
-                                Gathering information...
-                              </span>
-                            </div>
-                          )} */}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-
-            <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black to-transparent pt-8 pb-6">
-              <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="relative">
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    placeholder="Ask a follow up..."
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) =>
-                      e.key === "Enter" && !loading && handleSearch()
-                    }
-                    className="w-full px-6 py-4 pr-14 text-base text-gray-50 placeholder-gray-500 bg-gray-900 border border-gray-700 rounded-xl shadow-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                    disabled={loading}
-                  />
-                  {loading ? (
-                    <button
-                      onClick={stopSearch}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-red-600 text-white rounded-lg hover:bg-red-500 transition-colors"
-                      title="Stop search"
-                    >
-                      <div className="w-4 h-4 border-2 border-white rounded-sm"></div>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleSearch}
-                      disabled={!query.trim()}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <Search className="w-5 h-5" strokeWidth={2} />
-                    </button>
-                  )}
+                  <div className="relative bg-white rounded-xl border border-gray-200 shadow-sm focus-within:border-gray-400 focus-within:ring-1 focus-within:ring-gray-400 transition-all duration-200">
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      placeholder="What do you want to know?"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={(e) =>
+                        e.key === "Enter" && !loading && handleSearch()
+                      }
+                      className="w-full px-5 py-4 text-base text-gray-900 placeholder-gray-400 bg-transparent focus:outline-none rounded-xl"
+                      disabled={loading}
+                    />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <button
+                        onClick={handleSearch}
+                        disabled={!query.trim() || loading}
+                        className="p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        <ArrowUp className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
+
                 {error && (
-                  <div className="mt-3 p-4 bg-red-950/30 border border-red-800 rounded-xl flex items-start gap-3 text-sm text-red-300">
-                    <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-sm text-red-600">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
                     <span>{error}</span>
                   </div>
                 )}
               </div>
             </div>
+          ) : (
+            <div className="pb-40 space-y-10">
+              {messages.map((message) => (
+                <div key={message.id} className="fade-in">
+                  {message.role === "user" && (
+                    <div className="flex justify-end mb-4">
+                      <div className="text-xl font-medium text-gray-900 leading-relaxed max-w-[90%]">
+                        {message.content}
+                      </div>
+                    </div>
+                  )}
+
+                  {message.role === "assistant" && (
+                    <div className="flex gap-6">
+                      <div className="flex-1 min-w-0 space-y-4">
+                        <div>
+                          {loading &&
+                            message.status &&
+                            message.status !== "COMPLETED" &&
+                            getStatusDisplay(message.status)}
+
+                          {((message.subQueries &&
+                            message.subQueries.length > 0) ||
+                            (message.sources &&
+                              message.sources.length > 0)) && (
+                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm mb-6">
+                              <button
+                                onClick={() => toggleExpansion(message.id)}
+                                className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer border-b border-gray-100"
+                              >
+                                <div className="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                  <Layers className="w-3.5 h-3.5" />
+                                  <span>
+                                    {message.sources?.length
+                                      ? `${message.sources.length} Sources Analyzed`
+                                      : "Processing Request"}
+                                  </span>
+                                </div>
+                                {message.isExpanded ? (
+                                  <ChevronUp className="w-4 h-4 text-gray-400" />
+                                ) : (
+                                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                                )}
+                              </button>
+
+                              {message.isExpanded && (
+                                <div className="p-4 space-y-6 bg-white">
+                                  {message.subQueries &&
+                                    message.subQueries.length > 0 && (
+                                      <div className="space-y-2">
+                                        <div className="text-xs font-semibold text-gray-400 uppercase">
+                                          Research Steps
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                          {message.subQueries.map(
+                                            (subQuery, idx) => (
+                                              <div
+                                                key={idx}
+                                                className="flex items-start gap-2.5 text-sm text-gray-600"
+                                              >
+                                                <div className="mt-0.5 text-gray-400">
+                                                  <Search className="w-3.5 h-3.5" />
+                                                </div>
+                                                <span>{subQuery}</span>
+                                              </div>
+                                            ),
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                  {message.sources &&
+                                    message.sources.length > 0 && (
+                                      <div className="space-y-2">
+                                        <div className="text-xs font-semibold text-gray-400 uppercase">
+                                          References
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                          {message.sources.map(
+                                            (source, idx) => {
+                                              const hostname = new URL(
+                                                source.url,
+                                              ).hostname.replace("www.", "");
+                                              return (
+                                                <a
+                                                  key={idx}
+                                                  href={source.url}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="flex items-center gap-3 p-2.5 bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 rounded-lg transition-all group cursor-pointer"
+                                                >
+                                                  <div className="flex-shrink-0 w-4 h-4 rounded-sm overflow-hidden opacity-70">
+                                                    <img
+                                                      src={getFaviconUrl(
+                                                        source.url,
+                                                      )}
+                                                      alt=""
+                                                      className="w-full h-full object-cover"
+                                                      onError={(e) => {
+                                                        (
+                                                          e.target as HTMLImageElement
+                                                        ).style.display =
+                                                          "none";
+                                                      }}
+                                                    />
+                                                  </div>
+                                                  <div className="flex-1 min-w-0">
+                                                    <div className="text-sm text-gray-800 font-medium truncate group-hover:text-blue-600 transition-colors">
+                                                      {source.title || hostname}
+                                                    </div>
+                                                    <div className="text-xs text-gray-500 truncate">
+                                                      {hostname}
+                                                    </div>
+                                                  </div>
+                                                </a>
+                                              );
+                                            },
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="markdown-content">
+                          {message.content ? (
+                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                          ) : (
+                            loading &&
+                            message.status !== "COMPLETED" && (
+                              <div className="flex flex-col gap-2 animate-pulse mt-2">
+                                <div className="h-2 bg-gray-200 rounded w-1/3"></div>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div ref={messagesEndRef} className="h-2" />
+            </div>
+          )}
+        </div>
+
+        {messages.length > 0 && (
+          <div className="fixed bottom-0 left-0 right-0 z-20 bg-gray-50 border-t border-gray-200">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+              <div className="relative bg-white border border-gray-200 rounded-xl shadow-sm flex items-center focus-within:border-gray-400 transition-colors">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Ask a follow up..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && !loading && handleSearch()
+                  }
+                  className="flex-1 px-4 py-3 text-base text-gray-900 bg-transparent focus:outline-none placeholder-gray-400"
+                  disabled={loading}
+                />
+                <div className="pr-2 flex items-center gap-2">
+                  {loading ? (
+                    <button
+                      onClick={stopSearch}
+                      className="p-2 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                      title="Stop search"
+                    >
+                      <StopCircle className="w-5 h-5" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSearch}
+                      disabled={!query.trim()}
+                      className="p-2 text-gray-400 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <ArrowUp className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              {error && (
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-4 py-2 bg-red-50 text-red-600 text-xs rounded-full border border-red-200 flex items-center gap-2 shadow-sm">
+                  <AlertCircle className="w-3 h-3" /> {error}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }
