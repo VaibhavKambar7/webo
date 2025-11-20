@@ -250,17 +250,17 @@ export default function Home() {
       DECOMPOSING: {
         label: "Breaking down request...",
         icon: Layers,
-        color: "text-blue-600",
+        color: "text-gray-500",
       },
-      SEARCHING: {
+      WORKING: {
         label: "Searching internet...",
         icon: Search,
-        color: "text-blue-600",
+        color: "text-gray-600",
       },
-      PROCESSING: {
-        label: "Analyzing sources...",
+      SYNTHESIZING: {
+        label: "Synthesizing answer...",
         icon: Loader,
-        color: "text-purple-600",
+        color: "text-gray-700",
       },
       COMPLETED: { label: "Completed", icon: null, color: "text-green-600" },
       FAILED: { label: "Failed", icon: AlertCircle, color: "text-red-600" },
@@ -281,9 +281,7 @@ export default function Home() {
         {Icon && (
           <Icon
             className={`w-4 h-4 ${
-              status !== "FAILED" &&
-              status !== "STOPPED" &&
-              status !== "COMPLETED"
+              status === "PENDING" || status === "SYNTHESIZING"
                 ? "animate-spin"
                 : ""
             }`}

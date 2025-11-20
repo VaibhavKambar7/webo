@@ -21,16 +21,15 @@ class Orchestrator:
         try:
             state = self.state_manager.get_state()
             state.status = "DECOMPOSING"
-            self.state_manager.save_state(state)
+            yield state
 
             search_queries = self.decomposer.split_into_search_queries(
                 state.original_query
             )
             state.sub_queries = search_queries
-            self.state_manager.save_state(state)
 
             state.status = "WORKING"
-            self.state_manager.save_state(state)
+            yield state
 
             for query in search_queries:
                 action = ReActAction(tool="web_search", input=query)
@@ -56,9 +55,6 @@ class Orchestrator:
                 state.memory.append(current_step)
                 self.state_manager.save_state(state)
 
-            self.state_manager.save_state(state)
-
-            state = self.state_manager.get_state()
             state.status = "SYNTHESIZING"
             yield state
 
