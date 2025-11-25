@@ -23,6 +23,11 @@ class StatusResponse(BaseModel):
     sources: Optional[List[Dict[str, Any]]] = None
     memory: Optional[List[Dict[str, Any]]] = None
 
+class ChatState(BaseModel):
+    chat_id: str
+    # job_ids: List[str] = []
+    summary: Optional[str] = None
+    recent_convo: List[Dict[str,Any]] = []
 
 # internal state schemas
 

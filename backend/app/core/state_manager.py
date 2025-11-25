@@ -1,12 +1,12 @@
 import redis
 import json
 from .config import settings
-from .schemas import JobState
-
+from .schemas import JobState, ChatState
 
 class StateManager:
-    def __init__(self, job_id: str):
+    def __init__(self, job_id: str, chat_id: str):
         self.job_id = job_id
+        self.chat_id = chat_id
         try:
             self.redis_client = redis.Redis(
                 host=settings.REDIS_HOST,
@@ -40,3 +40,39 @@ class StateManager:
             self.redis_client.set(self.job_id, state.model_dump_json())
         except Exception as e:
             raise ValueError(f"Error saving state: {e}")
+
+
+class ChatManager:
+    def __init__(self, chat_id: str):
+        self.chat_id = chat_id
+        try:
+            self.redis_client = redis.Redis(
+                host=settings.REDIS_HOST,
+                port=settings.REDIS_PORT,
+                db=0,
+                decode_responses=True,
+            )
+            self.redis_client.ping()
+        except Exception as e:
+            raise ConnectionError(f"Could not connect to Redis: {e}")
+
+    def create_chat(self) -> ChatState:
+        state = ChatState(chat_id=self.chat_id)
+        self.save_summary(state)
+        return state
+
+    def save_summary(self, chat_state: ChatState):
+        """Saves the entire chat state to Redis."""
+        try:
+            self.redis_client.set(self.chat_id, chat_state.model_dump_json())
+        except Exception as e:
+            raise ValueError(f"Error saving chat summary: {e}")
+
+    def get_summary(self) -> ChatState:
+        try:
+            state_json = self.redis_client.get(self.chat_id)
+            if not state_json:
+                raise ValueError(f"No chat found with ID: {self.chat_id}")
+            return ChatState(**json.loads(state_json))
+        except Exception as e:
+            raise ValueError(f"Error fetching chat summary: {e}")
