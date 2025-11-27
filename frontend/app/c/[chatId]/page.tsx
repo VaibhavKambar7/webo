@@ -1,11 +1,12 @@
-import ChatContainer from "@/app/components/ChatContainer";
+import ChatContainer from "@/app/components/chat-container";
 
 interface ChatIdPageProps {
-  params: {
+  params: Promise<{
     chatId: string;
-  };
+  }>;
 }
 
-export default function ChatIdPage({ params }: ChatIdPageProps) {
-  return <ChatContainer initialChatId={params.chatId} />;
+export default async function ChatIdPage({ params }: ChatIdPageProps) {
+  const { chatId } = await params;
+  return <ChatContainer initialChatId={chatId} />;
 }

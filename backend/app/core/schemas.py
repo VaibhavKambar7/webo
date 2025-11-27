@@ -6,6 +6,7 @@ from typing import List, Optional, Literal, Dict, Any
 
 class QueryRequest(BaseModel):
     query: str
+    chat_id: str
 
 
 class AskResponse(BaseModel):
@@ -45,6 +46,7 @@ class ReActStep(BaseModel):
 
 class JobState(BaseModel):
     job_id: str
+    chat_id: str
     status: str = "PENDING"
     original_query: str
     sub_queries: List[str] = []

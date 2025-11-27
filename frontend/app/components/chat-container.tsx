@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import {
   Search,
   Loader,
@@ -70,7 +69,6 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
   const [currentChatId, setCurrentChatId] = useState<string | undefined>(
     initialChatId,
   );
-  const router = useRouter();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -223,8 +221,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
         if (newChatId) {
           finalChatId = newChatId;
           setCurrentChatId(newChatId);
-          // Redirect the user to the new dynamic URL
-          router.replace(`/c/${newChatId}`);
+          window.history.replaceState({}, "", `/c/${newChatId}`);
         } else {
           console.error(
             "Server did not return a valid chat ID in the response body.",
@@ -491,7 +488,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
         </div>
 
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-          {messages.length === 0 ? (
+          {messages.length === 0 && !currentChatId ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
               <div className="w-full max-w-lg space-y-8">
                 <div className="text-center space-y-2">
@@ -776,7 +773,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
           )}
         </div>
 
-        {messages.length > 0 && (
+        {(messages.length > 0 || currentChatId) && (
           <div
             className={`fixed bottom-0 left-0 right-0 z-20 ${
               theme === "dark"

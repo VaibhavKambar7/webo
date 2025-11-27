@@ -11,10 +11,13 @@ class Orchestrator:
         self.job_id = job_id
         self.state_manager = StateManager(job_id)
 
+        state = self.state_manager.get_state()
+        self.chat_id = state.chat_id
+
         self.decomposer = DecomposerService()
         self.agent = AgentService()
         self.tool = ToolService()
-        self.synthesis = SynthesisService()
+        self.synthesis = SynthesisService(self.chat_id)
 
     def run_full_query(self):
         """main workflow to run the entire query process."""

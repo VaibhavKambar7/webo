@@ -31,7 +31,7 @@ def ask_question(request: QueryRequest, background_tasks: BackgroundTasks):
     job_id = str(uuid.uuid4())
     try:
         state_manager = StateManager(job_id)
-        state_manager.create_job(request.query)
+        state_manager.create_job(request.query, request.chat_id)
 
         return AskResponse(job_id=job_id)
 
@@ -42,7 +42,7 @@ def ask_question(request: QueryRequest, background_tasks: BackgroundTasks):
 
 
 @app.post("/create-chatId")
-def create_chat_id() -> str:
+def create_chat_id():
     """
     creates chat id for frontend param
     """

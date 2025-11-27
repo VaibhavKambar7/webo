@@ -17,9 +17,9 @@ class StateManager:
         except Exception as e:
             raise ConnectionError(f"Could not connect to Redis: {e}")
 
-    def create_job(self, query: str) -> JobState:
+    def create_job(self, query: str, chat_id: str) -> JobState:
         """Creates and saves the initial job state."""
-        state = JobState(job_id=self.job_id, original_query=query, status="PENDING")
+        state = JobState(job_id=self.job_id, chat_id=chat_id, original_query=query, status="PENDING")
         self.save_state(state)
         return state
 

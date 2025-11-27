@@ -13,7 +13,7 @@ class SynthesisService:
         self.model = genai.GenerativeModel("gemini-2.5-flash-lite")
         self.chat_manager = ChatManager(chat_id)
 
-    def summarize_stream(self, original_query: str, memory: List[ReActStep], background_tasks: BackgroundTasks):
+    def summarize_stream(self, original_query: str, memory: List[ReActStep], background_tasks: BackgroundTasks = None):
         """
         Streams the synthesized answer and triggers background summarization.
         """
@@ -67,11 +67,14 @@ class SynthesisService:
                     final_answer += chunk.text
                     yield chunk.text
 
-            background_tasks.add_task(
-                self.summarize_chat,
-                original_query,
-                final_answer
-            )
+            if background_tasks:
+                background_tasks.add_task(
+                    self.summarize_chat,
+                    original_query,
+                    final_answer
+                )
+            else:
+                self.summarize_chat(original_query, final_answer)
 
         except Exception as e:
             return f"Error during synthesis: {e}"
