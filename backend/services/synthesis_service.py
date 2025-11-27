@@ -94,7 +94,25 @@ class SynthesisService:
             older_convo.append(recent_convo.pop(0))
 
         # need to feed older_convo into the prompt
-        prompt = ""
+        prompt = f"""
+        You are responsible for maintaining memory across a long conversation.
+
+        Summarize the conversation turns provided below so that important details are not lost. Capture:
+
+        - The user’s goals, questions, decisions, or constraints.
+        - Relevant facts or reasoning the assistant previously provided.
+        - Any key preferences or corrections by the user.
+
+        Do NOT include filler talk or exact quotes.
+        Do NOT exceed 6–8 sentences.
+
+        Conversation to summarize:
+        ---
+        {older_convo}
+        ---
+
+        Provide a short memory summary that preserves essential context.
+        """
 
         try:
             response = self.model.generate_content(prompt)

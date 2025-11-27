@@ -4,9 +4,8 @@ from .config import settings
 from .schemas import JobState, ChatState
 
 class StateManager:
-    def __init__(self, job_id: str, chat_id: str):
+    def __init__(self, job_id: str):
         self.job_id = job_id
-        self.chat_id = chat_id
         try:
             self.redis_client = redis.Redis(
                 host=settings.REDIS_HOST,

@@ -3,7 +3,7 @@ import json
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.schemas import AskResponse, QueryRequest, StatusResponse
-from app.core.state_manager import StateManager
+from app.core.state_manager import StateManager,ChatManager
 from orchestrator import Orchestrator
 from fastapi.responses import StreamingResponse
 
@@ -41,6 +41,25 @@ def ask_question(request: QueryRequest, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=500, detail=f"Error submitting job: {e}")
 
 
+@app.post("/create-chatId")
+def create_chat_id() -> str:
+    """
+    creates chat id for frontend param
+    """
+    chat_id = str(uuid.uuid4())
+    try:
+        chat_manager = ChatManager(chat_id)
+        chat_manager.create_chat()
+        
+        return {"chat_id": chat_id}
+
+    except ConnectionError as e:
+        raise HTTPException(status_code=503, detail=f"Service unavailable: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating chat id: {e}")
+
+
+#  currently not in use
 @app.get("/status/{job_id}", response_model=StatusResponse)
 def get_status(job_id: str):
     """
