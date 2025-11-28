@@ -14,7 +14,7 @@ class Orchestrator:
         state = self.state_manager.get_state()
         self.chat_id = state.chat_id
 
-        self.decomposer = DecomposerService()
+        self.decomposer = DecomposerService(self.chat_id)
         self.agent = AgentService()
         self.tool = ToolService()
         self.synthesis = SynthesisService(self.chat_id)

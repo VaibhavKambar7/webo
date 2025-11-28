@@ -1,35 +1,62 @@
 import json
+from app.core.state_manager import ChatManager
 import google.generativeai as genai
 from app.core.config import settings
 from typing import List
 
 
 class DecomposerService:
-    def __init__(self):
+    def __init__(self, chat_id: str):
         genai.configure(api_key=settings.GEMINI_API_KEY)
         self.model = genai.GenerativeModel(
             "gemini-2.5-flash-lite",
             generation_config={"response_mime_type": "application/json"},
         )
+        self.chat_manager = ChatManager(chat_id)
 
     def split_into_search_queries(self, query: str) -> List[str]:
+
+        content = self.chat_manager.get_summary()
+
+        summary = content.summary or None
+        recent_convo = content.recent_convo or []
+
+        formatted_recent_convo = "\n".join(
+            f"{m['role'].upper()}:{m['content']}" for m in recent_convo
+        )
+
         """
         Splits a complex query into a list of specific, searchable queries.
         """
 
         prompt = f"""
-        You are a search query decomposition expert. Analyze the user's query and determine 
-        if it should be broken down into multiple searches.
+        You are a search query decomposition expert. You MUST maintain conversational context and long-term memory.
 
-        RULES:
-        1. Decompose ONLY if needed.
-        2. Simple comparisons → 2–3 focused searches max.
-        3. Single-topic questions → return as-is.
-        4. If decomposing, produce 2–4 queries max.
-        5. Return STRICT JSON with: {{ "search_queries": [...] }}
+        Long-Term Summary:
+        ---
+        {summary}
+        ---
 
-        User Query: "{query}"
-        """
+        Recent Conversation:
+        ---
+        {formatted_recent_convo}
+        ---
+
+        User Query:
+        "{query}"
+
+        Rules:
+        1. Consider ALL context above. If user intent is clarified earlier, use that meaning.
+        2. Simple or single-topic questions → return exactly 1 search query.
+        3. Comparisons → 2–4 focused search queries max.
+        4. Include details from history IF needed to preserve continuity (e.g. specific product names, constraints).
+        5. STRICT JSON output:
+        {{
+        "search_queries": ["..."]
+        }}
+
+        Output ONLY valid JSON. No explanations.
+    """
 
         try:
             response = self.model.generate_content(prompt)
