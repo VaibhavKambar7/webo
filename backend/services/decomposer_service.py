@@ -54,6 +54,18 @@ class DecomposerService:
         {{
         "search_queries": ["..."]
         }}
+        6. Queries must target factual, verifiable information — NOT rumors, controversy,
+        drama, or unconfirmed speculation.
+        7. Extract the smallest meaningful components of the user request
+        (attributes, comparisons, measurable properties, contextual constraints).
+        8. Avoid sentiment-driven terms unless the user explicitly asks for opinions or reactions.
+        9. Use domain-appropriate keywords:
+        - For people → job/role, achievements, biography, measurable characteristics
+        - For products → specs, pricing, reviews from reputable sources
+        - For places → location details, services, access, history
+        10. If a comparison is requested, generate balanced, parallel queries
+            (same category of information for each subject).
+
 
         Output ONLY valid JSON. No explanations.
     """
