@@ -7,7 +7,17 @@ from app.core.state_manager import StateManager,ChatManager
 from orchestrator import Orchestrator
 from fastapi.responses import StreamingResponse
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+from app.core.database import engine, Base
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Create tables on startup
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,14 +34,14 @@ def read_root():
 
 
 @app.post("/ask", response_model=AskResponse)
-def ask_question(request: QueryRequest, background_tasks: BackgroundTasks):
+async def ask_question(request: QueryRequest, background_tasks: BackgroundTasks):
     """
     submits a new query and returns a job_id for streaming.
     """
     job_id = str(uuid.uuid4())
     try:
         state_manager = StateManager(job_id)
-        state_manager.create_job(request.query, request.chat_id)
+        await state_manager.create_job(request.query, request.chat_id)
 
         return AskResponse(job_id=job_id)
 
@@ -42,14 +52,14 @@ def ask_question(request: QueryRequest, background_tasks: BackgroundTasks):
 
 
 @app.post("/create-chatId")
-def create_chat_id():
+async def create_chat_id():
     """
     creates chat id for frontend param
     """
     chat_id = str(uuid.uuid4())
     try:
         chat_manager = ChatManager(chat_id)
-        chat_manager.create_chat()
+        await chat_manager.create_chat()
         
         return {"chat_id": chat_id}
 
@@ -61,13 +71,13 @@ def create_chat_id():
 
 #  currently not in use
 @app.get("/status/{job_id}", response_model=StatusResponse)
-def get_status(job_id: str):
+async def get_status(job_id: str):
     """
     poll this endpoint to check the status and get the final answer.
     """
     try:
         state_manager = StateManager(job_id)
-        state = state_manager.get_state()
+        state = await state_manager.get_state()
 
         memory_dicts = (
             [step.model_dump() for step in state.memory] if state.memory else None
@@ -94,7 +104,7 @@ async def event_streamer(job_id: str):
         orchestrator = Orchestrator(job_id)
 
         try:
-            for state in orchestrator.run_full_query():
+            async for state in orchestrator.run_full_query():
                 memory_dicts = (
                     [step.model_dump() for step in state.memory] if state.memory else []
                 )
@@ -110,7 +120,7 @@ async def event_streamer(job_id: str):
 
                 yield f"data:{json.dumps(state_dict)}\n\n"
 
-            yield f"data:{json.dumps({{'type': 'completed'}})}\n\n"
+            yield f"data:{json.dumps({'type': 'completed'})}\n\n"
 
         except Exception as e:
             yield f"data:{json.dumps({'type': 'error', 'message': str(e)})}\n\n"

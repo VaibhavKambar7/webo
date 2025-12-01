@@ -1,23 +1,20 @@
-import os
+from pydantic_settings import BaseSettings
 
-from dotenv import load_dotenv
+class Config(BaseSettings):
+    GEMINI_API_KEY: str
+    EXA_API_KEY: str
+    OPENAI_API_KEY: str
+    
+    # Database
+    DATABASE_URL: str = "postgresql+asyncpg://user:password@localhost/dbname"
+    
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_HOST: str = "localhost" # Keep for backward compatibility if needed
+    REDIS_PORT: int = 6379        # Keep for backward compatibility if needed
 
-load_dotenv()
-
-
-class Config:
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-    EXA_API_KEY = os.getenv("EXA_API_KEY")
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
-
-    if not GEMINI_API_KEY:
-        raise ValueError("GEMINI_API_KEY is not set")
-    if not EXA_API_KEY:
-        raise ValueError("EXA_API_KEY is not set")
-    if not OPENAI_API_KEY:
-        raise ValueError("OPENAI_API_KEY is not set")
-
+    class Config:
+        env_file = ".env"
+        extra = "ignore"
 
 settings = Config()

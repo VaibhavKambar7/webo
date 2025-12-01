@@ -62,3 +62,6 @@ uvicorn==0.34.2
 zstandard==0.23.0
 redis
 ruff
+asyncpg
+psycopg2-binary
+pydantic-settings

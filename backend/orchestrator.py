@@ -10,19 +10,24 @@ class Orchestrator:
     def __init__(self, job_id: str):
         self.job_id = job_id
         self.state_manager = StateManager(job_id)
-
-        state = self.state_manager.get_state()
-        self.chat_id = state.chat_id
-
-        self.decomposer = DecomposerService(self.chat_id)
+        # We can't await here in __init__, so we'll fetch state in run_full_query or a setup method
+        # Assuming chat_id is needed for services, we might need to pass it or fetch it async.
+        # For now, let's delay service init until we have state.
+        self.decomposer = None
         self.agent = AgentService()
         self.tool = ToolService()
-        self.synthesis = SynthesisService(self.chat_id)
+        self.synthesis = None
 
-    def run_full_query(self):
+    async def run_full_query(self):
         """main workflow to run the entire query process."""
         try:
-            state = self.state_manager.get_state()
+            state = await self.state_manager.get_state()
+            self.chat_id = state.chat_id
+            
+            # Init services that need chat_id
+            self.decomposer = DecomposerService(self.chat_id)
+            self.synthesis = SynthesisService(self.chat_id)
+
             state.status = "DECOMPOSING"
             yield state
 
@@ -56,7 +61,7 @@ class Orchestrator:
 
                 current_step.observation = observation
                 state.memory.append(current_step)
-                self.state_manager.save_state(state)
+                await self.state_manager.save_state(state)
 
             state.status = "SYNTHESIZING"
             yield state
@@ -72,16 +77,16 @@ class Orchestrator:
             state.status = "COMPLETED"
             yield state
 
-            self.state_manager.save_state(state)
+            await self.state_manager.save_state(state)
             print(f"Job {self.job_id} completed.")
 
         except Exception as e:
             print(f"Error in job {self.job_id}: {e}")
             try:
-                state = self.state_manager.get_state()
+                state = await self.state_manager.get_state()
                 state.status = "FAILED"
                 state.error = str(e)
-                self.state_manager.save_state(state)
+                await self.state_manager.save_state(state)
                 yield state
             except Exception:
                 pass
