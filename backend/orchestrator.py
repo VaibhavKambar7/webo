@@ -31,7 +31,7 @@ class Orchestrator:
             state.status = "DECOMPOSING"
             yield state
 
-            search_queries = self.decomposer.split_into_search_queries(
+            search_queries = await self.decomposer.split_into_search_queries(
                 state.original_query
             )
             state.sub_queries = search_queries
@@ -68,7 +68,7 @@ class Orchestrator:
 
             state.final_answer = ""
 
-            for chunk in self.synthesis.summarize_stream(
+            async for chunk in self.synthesis.summarize_stream(
                 state.original_query, state.memory
             ):
                 state.final_answer += chunk

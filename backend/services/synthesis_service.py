@@ -13,14 +13,14 @@ class SynthesisService:
         self.model = genai.GenerativeModel("gemini-2.5-flash-lite")
         self.chat_manager = ChatManager(chat_id)
 
-    def summarize_stream(self, original_query: str, memory: List[ReActStep], background_tasks: BackgroundTasks = None):
+    async def summarize_stream(self, original_query: str, memory: List[ReActStep], background_tasks: BackgroundTasks = None):
         """
         Streams the synthesized answer and triggers background summarization.
         """
 
         context = self._compile_context(memory)
 
-        content = self.chat_manager.get_summary()
+        content = await self.chat_manager.get_summary()
 
         summary = content.summary
         recent_convo = content.recent_convo
@@ -58,11 +58,11 @@ class SynthesisService:
         """
 
         try:
-            response = self.model.generate_content(prompt, stream=True)
+            response = await self.model.generate_content_async(prompt, stream=True)
 
             final_answer = ""
 
-            for chunk in response:
+            async for chunk in response:
                 if chunk.text:
                     final_answer += chunk.text
                     yield chunk.text
@@ -74,13 +74,13 @@ class SynthesisService:
                     final_answer
                 )
             else:
-                self.summarize_chat(original_query, final_answer)
+                await self.summarize_chat(original_query, final_answer)
 
         except Exception as e:
-            return f"Error during synthesis: {e}"
+            yield f"Error during synthesis: {e}"
 
-    def summarize_chat(self, original_query: str, final_answer: str):
-        chat_content = self.chat_manager.get_summary()
+    async def summarize_chat(self, original_query: str, final_answer: str):
+        chat_content = await self.chat_manager.get_summary()
 
         recent_convo = chat_content.recent_convo
         older_convo = []
@@ -118,7 +118,7 @@ class SynthesisService:
         """
 
         try:
-            response = self.model.generate_content(prompt)
+            response = await self.model.generate_content_async(prompt)
 
             chat_state = ChatState(
                 chat_id=self.chat_manager.chat_id,
@@ -126,10 +126,10 @@ class SynthesisService:
                 recent_convo=recent_convo
             )
 
-            self.chat_manager.save_summary(chat_state)
+            await self.chat_manager.save_summary(chat_state)
 
         except Exception as e:
-            return f"Error during summary generation: {e}"
+            print(f"Error during summary generation: {e}")
 
 
     def _compile_context(self, memory: List[ReActStep]) -> str:

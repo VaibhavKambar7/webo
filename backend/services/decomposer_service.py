@@ -14,9 +14,9 @@ class DecomposerService:
         )
         self.chat_manager = ChatManager(chat_id)
 
-    def split_into_search_queries(self, query: str) -> List[str]:
+    async def split_into_search_queries(self, query: str) -> List[str]:
 
-        content = self.chat_manager.get_summary()
+        content = await self.chat_manager.get_summary()
 
         summary = content.summary or None
         recent_convo = content.recent_convo or []
@@ -71,7 +71,7 @@ class DecomposerService:
     """
 
         try:
-            response = self.model.generate_content(prompt)
+            response = await self.model.generate_content_async(prompt)
             result = json.loads(response.text)
 
             if isinstance(result, dict):
