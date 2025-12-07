@@ -101,6 +101,10 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
     if (value === "light" || value === "dark") {
       setTheme(value);
     }
+
+    if (initialChatId) {
+      getChats();
+    }
   }, []);
 
   const eventStreamer = async (jobId: string, assistantMessageId: string) => {
@@ -169,6 +173,27 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
       console.error("Streaming error:", err);
       setError("Failed to establish connection. Please try again.");
       setLoading(false);
+    }
+  };
+
+  const getChats = async () => {
+    try {
+      if (!initialChatId) return;
+
+      const response = await fetch("http://localhost:8000/get-chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ chat_id: initialChatId }),
+      });
+
+      const messages = await response.json();
+
+      setMessages(messages);
+    } catch (err) {
+      console.log("Get chats error:", err);
+      setError("Failed to get chats. Please try again.");
     }
   };
 

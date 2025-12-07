@@ -75,9 +75,10 @@ class Orchestrator:
                 yield state
 
             state.status = "COMPLETED"
+            await self.state_manager.save_state(state)
             yield state
 
-            await self.state_manager.save_state(state)
+            print(f"Job {self.job_id} completed.")
             print(f"Job {self.job_id} completed.")
 
         except Exception as e:

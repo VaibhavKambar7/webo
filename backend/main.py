@@ -3,6 +3,7 @@ import json
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.schemas import AskResponse, QueryRequest, StatusResponse
+from pydantic import BaseModel
 from app.core.state_manager import StateManager,ChatManager
 from orchestrator import Orchestrator
 from fastapi.responses import StreamingResponse
@@ -31,6 +32,46 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"message": "webo"}
+
+class GetChatRequest(BaseModel):
+    chat_id: str
+
+@app.post("/get-chat")
+async def get_chats(request: GetChatRequest):
+    """
+    returns messages for a chat
+    """
+    try:
+        chat_manager = ChatManager(request.chat_id)
+        jobs = await chat_manager.get_full_history()
+        
+        messages = []
+        for job in jobs:
+            messages.append({
+                "id": f"{job.job_id}-user",
+                "role": "user",
+                "content": job.original_query,
+                "jobId": job.job_id
+            })
+            
+            if job.final_answer or job.status != "PENDING":
+                messages.append({
+                    "id": f"{job.job_id}-assistant",
+                    "role": "assistant",
+                    "content": job.final_answer or "",
+                    "sources": job.sources,
+                    "thinkingSteps": job.memory, 
+                    "subQueries": job.sub_queries,
+                    "status": job.status,
+                    "jobId": job.job_id,
+                    "isExpanded": False, 
+                })
+        
+        return messages
+
+    except Exception as e:
+        print(f"Error fetching chat history: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching chat history: {e}")
 
 
 @app.post("/ask", response_model=AskResponse)

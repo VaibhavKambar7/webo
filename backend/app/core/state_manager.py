@@ -1,5 +1,6 @@
 import json
 from .schemas import JobState, ChatState
+from typing import List
 from .redis import get_redis_client
 from .database import AsyncSessionLocal
 from app.models.sql_models import Job, Chat
@@ -148,3 +149,13 @@ class ChatManager:
             raise ValueError(f"No chat found with ID: {self.chat_id}")
         except Exception as e:
             raise ValueError(f"Error fetching chat summary: {e}")
+
+    async def get_full_history(self) -> List[Job]:
+        """Fetches all jobs associated with this chat_id from Postgres."""
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(Job)
+                .filter(Job.chat_id == self.chat_id)
+                .order_by(Job.created_at.asc())
+            )
+            return result.scalars().all()
