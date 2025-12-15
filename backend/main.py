@@ -2,9 +2,10 @@ import uuid
 import json
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.schemas import AskResponse, QueryRequest, StatusResponse
+from app.core.schemas import AskResponse, QueryRequest
 from pydantic import BaseModel
-from app.core.state_manager import StateManager,ChatManager
+from app.core.state_manager import ChatManager
+from app.core.job_service import JobService
 from orchestrator import Orchestrator
 from fastapi.responses import StreamingResponse
 
@@ -81,8 +82,8 @@ async def ask_question(request: QueryRequest, background_tasks: BackgroundTasks)
     """
     job_id = str(uuid.uuid4())
     try:
-        state_manager = StateManager(job_id)
-        await state_manager.create_job(request.query, request.chat_id)
+        job_service = JobService()
+        await job_service.create_job(job_id,request.query, request.chat_id)
 
         return AskResponse(job_id=job_id)
 
@@ -111,32 +112,32 @@ async def create_chat_id():
 
 
 #  currently not in use
-@app.get("/status/{job_id}", response_model=StatusResponse)
-async def get_status(job_id: str):
-    """
-    poll this endpoint to check the status and get the final answer.
-    """
-    try:
-        state_manager = StateManager(job_id)
-        state = await state_manager.get_state()
+# @app.get("/status/{job_id}", response_model=StatusResponse)
+# async def get_status(job_id: str):
+#     """
+#     poll this endpoint to check the status and get the final answer.
+#     """
+#     try:
+#         state_manager = StateManager(job_id)
+#         state = await state_manager.get_state()
 
-        memory_dicts = (
-            [step.model_dump() for step in state.memory] if state.memory else None
-        )
+#         memory_dicts = (
+#             [step.model_dump() for step in state.memory] if state.memory else None
+#         )
 
-        return StatusResponse(
-            job_id=state.job_id,
-            status=state.status,
-            original_query=state.original_query,
-            final_answer=state.final_answer,
-            sub_queries=state.sub_queries,
-            memory=memory_dicts,
-        )
+#         return StatusResponse(
+#             job_id=state.job_id,
+#             status=state.status,
+#             original_query=state.original_query,
+#             final_answer=state.final_answer,
+#             sub_queries=state.sub_queries,
+#             memory=memory_dicts,
+#         )
 
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except ConnectionError as e:
-        raise HTTPException(status_code=503, detail=f"Service unavailable: {e}")
+#     except ValueError as e:
+#         raise HTTPException(status_code=404, detail=str(e))
+#     except ConnectionError as e:
+#         raise HTTPException(status_code=503, detail=f"Service unavailable: {e}")
 
 
 @app.get("/stream/{job_id}")

@@ -65,7 +65,6 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
-  // State to hold the active chat ID, initialized from props
   const [currentChatId, setCurrentChatId] = useState<string | undefined>(
     initialChatId,
   );
@@ -226,7 +225,6 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
 
     let finalChatId = currentChatId;
 
-    // --- ID Creation and Redirection Logic (Refined) ---
     if (!finalChatId) {
       const createIdResponse = await fetch(
         "http://localhost:8000/create-chatId",
@@ -235,7 +233,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({}), // Send empty JSON body
+          body: JSON.stringify({}),
         },
       );
 
@@ -264,16 +262,13 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
         return;
       }
     }
-    // ---------------------------------------------------
 
     try {
-      // Use the finalChatId in the request body for the /ask endpoint
       const response = await fetch("http://localhost:8000/ask", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        // IMPORTANT: Pass the chat_id to the backend to maintain conversation state
         body: JSON.stringify({
           query: userMessage.content,
           chat_id: finalChatId,
