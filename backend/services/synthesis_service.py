@@ -1,17 +1,20 @@
 from app.core.config import settings
-from app.core.schemas import ChatState, ReActStep
+from app.core.schemas import ReActStep
 from typing import List
 import google.generativeai as genai
 from app.core.constants import MAX_RAW_WINDOW_TOKENS
 from app.utils.token import count_tokens
-from app.core.state_manager import ChatManager
+from app.core.cache import ChatManager
 from fastapi import BackgroundTasks
+from app.services.chat_service import ChatService
 
 class SynthesisService:
     def __init__(self, chat_id: str):
         genai.configure(api_key=settings.GEMINI_API_KEY)
         self.model = genai.GenerativeModel("gemini-2.5-flash-lite")
         self.chat_manager = ChatManager(chat_id)
+        self.chat_service = ChatService()
+        self.chat_id = chat_id
 
     async def summarize_stream(self, original_query: str, memory: List[ReActStep], background_tasks: BackgroundTasks = None):
         """
@@ -20,7 +23,7 @@ class SynthesisService:
 
         context = self._compile_context(memory)
 
-        content = await self.chat_manager.get_summary()
+        content = await self.chat_service.get_chat_state(self.chat_id)
 
         summary = content.summary
         recent_convo = content.recent_convo
@@ -80,7 +83,7 @@ class SynthesisService:
             yield f"Error during synthesis: {e}"
 
     async def summarize_chat(self, original_query: str, final_answer: str):
-        chat_content = await self.chat_manager.get_summary()
+        chat_content = await self.chat_service.get_chat_state(self.chat_id)
 
         recent_convo = chat_content.recent_convo
         older_convo = []
@@ -91,12 +94,11 @@ class SynthesisService:
         while count_tokens(recent_convo) > MAX_RAW_WINDOW_TOKENS:
 
             if len(recent_convo) <= 2:
-                break # safety guard
+                break
 
             older_convo.append(recent_convo.pop(0))
             older_convo.append(recent_convo.pop(0))
 
-        # need to feed older_convo into the prompt
         prompt = f"""
         You are responsible for maintaining memory across a long conversation.
 
@@ -120,14 +122,12 @@ class SynthesisService:
         try:
             response = await self.model.generate_content_async(prompt)
 
-            chat_state = ChatState(
-                chat_id=self.chat_manager.chat_id,
+
+            await self.chat_service.update_chat_summary(
+                self.chat_id,
                 summary=response.text,
                 recent_convo=recent_convo
             )
-
-            await self.chat_manager.save_summary(chat_state)
-
         except Exception as e:
             print(f"Error during summary generation: {e}")
 

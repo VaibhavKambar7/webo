@@ -1,4 +1,4 @@
-from app.core.job_service import JobService
+from app.services.job_service import JobService
 from app.core.schemas import ReActStep, ReActAction
 from services.decomposer_service import DecomposerService
 from services.agent_service import AgentService
@@ -9,8 +9,7 @@ from services.synthesis_service import SynthesisService
 class Orchestrator:
     def __init__(self, job_id: str):
         self.job_id = job_id
-        # self.state_manager = StateManager(job_id)
-        self.job_service = JobService(job_id)
+        self.job_service = JobService()
         self.decomposer = None
         self.agent = AgentService()
         self.tool = ToolService()
@@ -19,8 +18,7 @@ class Orchestrator:
     async def run_full_query(self):
         """main workflow to run the entire query process."""
         try:
-            # state = await self.state_manager.get_state()
-            state = await self.job_service.get_job_state()
+            state = await self.job_service.get_job_state(self.job_id)
             self.chat_id = state.chat_id
             
             self.decomposer = DecomposerService(self.chat_id)
@@ -60,7 +58,6 @@ class Orchestrator:
                 current_step.observation = observation
                 state.memory.append(current_step)
                 await self.job_service.update_job_state(state)
-                # await self.state_manager.save_state(state)
 
             state.status = "SYNTHESIZING"
             yield state
@@ -75,7 +72,6 @@ class Orchestrator:
 
             state.status = "COMPLETED"
             await self.job_service.update_job_state(state)
-            # await self.state_manager.save_state(state)
             yield state
 
             print(f"Job {self.job_id} completed.")
@@ -84,12 +80,10 @@ class Orchestrator:
         except Exception as e:
             print(f"Error in job {self.job_id}: {e}")
             try:
-                # state = await self.state_manager.get_state()
-                state = await self.job_service.get_job_state()
+                state = await self.job_service.get_job_state(self.job_id)
                 state.status = "FAILED"
                 state.error = str(e)
                 await self.job_service.update_job_state(state)
-                await self.state_manager.save_state(state)
                 yield state
             except Exception:
                 pass

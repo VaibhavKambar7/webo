@@ -4,11 +4,10 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.schemas import AskResponse, QueryRequest
 from pydantic import BaseModel
-from app.core.state_manager import ChatManager
-from app.core.job_service import JobService
+from app.services.job_service import JobService
+from app.services.chat_service import ChatService
 from orchestrator import Orchestrator
 from fastapi.responses import StreamingResponse
-
 from contextlib import asynccontextmanager
 from app.core.database import engine, Base
 
@@ -43,30 +42,8 @@ async def get_chats(request: GetChatRequest):
     returns messages for a chat
     """
     try:
-        chat_manager = ChatManager(request.chat_id)
-        jobs = await chat_manager.get_full_history()
-        
-        messages = []
-        for job in jobs:
-            messages.append({
-                "id": f"{job.job_id}-user",
-                "role": "user",
-                "content": job.original_query,
-                "jobId": job.job_id
-            })
-            
-            if job.final_answer or job.status != "PENDING":
-                messages.append({
-                    "id": f"{job.job_id}-assistant",
-                    "role": "assistant",
-                    "content": job.final_answer or "",
-                    "sources": job.sources,
-                    "thinkingSteps": job.memory, 
-                    "subQueries": job.sub_queries,
-                    "status": job.status,
-                    "jobId": job.job_id,
-                    "isExpanded": False, 
-                })
+        chat_service = ChatService()
+        messages = await  chat_service.get_chat_history(request.chat_id)
         
         return messages
 
@@ -100,8 +77,8 @@ async def create_chat_id():
     """
     chat_id = str(uuid.uuid4())
     try:
-        chat_manager = ChatManager(chat_id)
-        await chat_manager.create_chat()
+        chat_service = ChatService()
+        await chat_service.create_chat(chat_id)
         
         return {"chat_id": chat_id}
 
@@ -109,36 +86,6 @@ async def create_chat_id():
         raise HTTPException(status_code=503, detail=f"Service unavailable: {e}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating chat id: {e}")
-
-
-#  currently not in use
-# @app.get("/status/{job_id}", response_model=StatusResponse)
-# async def get_status(job_id: str):
-#     """
-#     poll this endpoint to check the status and get the final answer.
-#     """
-#     try:
-#         state_manager = StateManager(job_id)
-#         state = await state_manager.get_state()
-
-#         memory_dicts = (
-#             [step.model_dump() for step in state.memory] if state.memory else None
-#         )
-
-#         return StatusResponse(
-#             job_id=state.job_id,
-#             status=state.status,
-#             original_query=state.original_query,
-#             final_answer=state.final_answer,
-#             sub_queries=state.sub_queries,
-#             memory=memory_dicts,
-#         )
-
-#     except ValueError as e:
-#         raise HTTPException(status_code=404, detail=str(e))
-#     except ConnectionError as e:
-#         raise HTTPException(status_code=503, detail=f"Service unavailable: {e}")
-
 
 @app.get("/stream/{job_id}")
 async def event_streamer(job_id: str):

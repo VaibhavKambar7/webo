@@ -1,8 +1,8 @@
 import json
-from app.core.state_manager import ChatManager
 import google.generativeai as genai
 from app.core.config import settings
 from typing import List
+from app.services.chat_service import ChatService
 
 
 class DecomposerService:
@@ -12,11 +12,12 @@ class DecomposerService:
             "gemini-2.5-flash-lite",
             generation_config={"response_mime_type": "application/json"},
         )
-        self.chat_manager = ChatManager(chat_id)
+        self.chat_service = ChatService()
+        self.chat_id = chat_id
 
     async def split_into_search_queries(self, query: str) -> List[str]:
 
-        content = await self.chat_manager.get_summary()
+        content = await self.chat_service.get_chat_state(self.chat_id)
 
         summary = content.summary or None
         recent_convo = content.recent_convo or []

@@ -1,6 +1,6 @@
 from app.core.schemas import JobState, ReActStep
 from repositories.job_repository import JobRepository
-from app.core.state_manager import StateManager
+from app.core.cache import StateManager
 
 class JobService:
 
