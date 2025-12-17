@@ -1,31 +1,31 @@
 import json
-from openai import OpenAI
 from app.core.config import settings
 from app.core.schemas import ReActStep
 from typing import List, Dict, Any
-
+import google.generativeai as genai
 
 class AgentService:
     def __init__(self):
-        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        self.model = genai.GenerativeModel(
+            "gemini-2.5-flash-lite",
+            generation_config={"response_mime_type": "application/json"},
+        )
 
-    def think(self, sub_query: str, memory: List[ReActStep]) -> Dict[str, Any]:
+    async def think(self, sub_query: str, memory: List[ReActStep]) -> Dict[str, Any]:
         """
         (PROMPT) This is the "Think" step of the ReAct loop.
         Decides the next action to take.
         """
 
-        # Build the prompt
         prompt = self._build_react_prompt(sub_query, memory)
 
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"},
-            )
-            action_json = json.loads(response.choices[0].message.content)
-            return action_json  # Should match {"thought": "...", "action": {"tool": "...", "input": "..."}}
+
+            response = await self.model.generate_content_async(prompt)
+            result = json.loads(response.text)
+            return result
+
 
         except Exception:
             return {
@@ -34,34 +34,48 @@ class AgentService:
             }
 
     def _build_react_prompt(self, sub_query: str, memory: List[ReActStep]) -> str:
-        """Helper to construct the ReAct prompt."""
-
-        history = "\n".join(
-            [
-                f"Thought: {step.thought}\nAction: {step.action.model_dump_json()}\nObservation: {step.observation}"
-                for step in memory
-            ]
-        )
-
+        """Enhanced prompt for agentic decision-making."""
+        
+        history = "\n".join([
+            f"Thought: {step.thought}\nAction: {step.action.model_dump_json()}\nObservation: {step.observation}"
+            for step in memory
+        ])
+        
         prompt = f"""
-        You are an AI research assistant. Your current goal is to answer the sub-query: "{sub_query}"
-        You will work step-by-step, using a Think-Action-Observation loop.
-
-        Available tools:
-        1. web_search(query: str): Searches the web for information.
-        2. final_answer(): Call this when you have sufficient information to answer the sub-query.
-
-        Here is your work history (Thought-Action-Observation):
-        {history if history else "No history yet."}
-
-        Based on your goal and history, what is your next thought and what single action should you take?
-        Respond ONLY with a JSON object in this format:
+        You are an AI research assistant with the ability to decide your next action.
+        
+        GOAL: Answer this query: "{sub_query}"
+        
+        AVAILABLE TOOLS:
+        1. web_search(query: str): Search the web for information
+        - Use this when you need more information
+        - Be specific with search queries
+        - You can use this multiple times with different queries
+        
+        2. final_answer(): Call this when you have SUFFICIENT information to answer
+        - Only use this when you're confident you can answer the query
+        - Don't use this if you need more information
+        
+        YOUR WORK SO FAR:
+        {history if history else "No actions taken yet."}
+        
+        DECISION RULES:
+        - If you have NO information yet, start with a web search
+        - If search results are insufficient, do MORE targeted searches
+        - If search results are off-topic, try different search terms
+        - If you have enough information to answer, call final_answer
+        - Be efficient: don't search more than necessary
+        - Maximum 5-7 searches for complex queries
+        
+        Based on your goal and work history, what should you do NEXT?
+        
+        Respond ONLY with JSON:
         {{
-          "thought": "Your reasoning for the next step...",
-          "action": {{
-            "tool": "tool_name",
-            "input": "tool_input_or_null"
-          }}
+        "thought": "Your reasoning for the next step (1-2 sentences)",
+        "action": {{
+            "tool": "web_search" or "final_answer",
+            "input": "search query" or null
+        }}
         }}
         """
         return prompt
