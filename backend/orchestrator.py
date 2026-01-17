@@ -63,7 +63,7 @@ class Orchestrator:
                     yield state
                     break
                 
-                state.status = f"Working (Step {iteration})"
+                state.status = "WORKING"
                 yield state
 
                 observation, results = self.tool.execute(tool_name,tool_input)
@@ -97,7 +97,9 @@ class Orchestrator:
             print(f"Job {self.job_id} completed.")
 
         except Exception as e:
-            print(f"Error in job {self.job_id}: {e}")
+            import traceback
+            print(f"❌ Error in job {self.job_id}: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
             try:
                 state = await self.job_service.get_job_state(self.job_id)
                 state.status = "FAILED"

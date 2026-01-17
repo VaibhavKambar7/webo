@@ -27,7 +27,8 @@ class AgentService:
             return result
 
 
-        except Exception:
+        except Exception as e:
+            print(f"❌ Error in agent.think(): {e}")
             return {
                 "thought": "An error occurred during thinking. Concluding this loop.",
                 "action": {"tool": "final_answer", "input": None},
