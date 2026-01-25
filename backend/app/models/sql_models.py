@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, JSON, DateTime
+from sqlalchemy import Column, String, Text, JSON, DateTime, Boolean
 from sqlalchemy.sql import func
 from app.core.database import Base
 
@@ -9,6 +9,7 @@ class Job(Base):
     chat_id = Column(String, index=True)
     status = Column(String, default="PENDING")
     original_query = Column(Text)
+    is_agentic = Column(Boolean, default=False)
     sub_queries = Column(JSON, default=[])
     memory = Column(JSON, default=[])
     sources = Column(JSON, default=[])

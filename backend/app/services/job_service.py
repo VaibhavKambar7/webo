@@ -7,7 +7,7 @@ class JobService:
     def __init__(self):
         self.job_repo = JobRepository()
 
-    async def create_job(self,job_id:str,query:str,chat_id:str) -> JobState:
+    async def create_job(self,job_id:str,query:str,chat_id:str, is_agentic: bool = False) -> JobState:
 
         if not query or not query.strip():
             raise ValueError("Query cannot be empty.")
@@ -19,7 +19,8 @@ class JobService:
             job_id = job_id,
             chat_id = chat_id,
             original_query = query.strip(),
-            status = "PENDING"
+            status = "PENDING",
+            is_agentic = is_agentic
         )
 
         state_manager = StateManager(job_id)
@@ -31,6 +32,7 @@ class JobService:
             "chat_id": chat_id,
             "original_query": query.strip(),
             "status": "PENDING",
+            "is_agentic": is_agentic,
             "sub_queries": [],
             "memory": [],
             "sources": []            
@@ -91,6 +93,7 @@ class JobService:
             chat_id = db_job.chat_id,
             status = db_job.status,
             original_query= db_job.original_query,
+            is_agentic = getattr(db_job, 'is_agentic', False),
             sub_queries = db_job.sub_queries or [],
             memory = [ReActStep(**step) for step in (db_job.memory or [])],
             sources = db_job.sources or [],

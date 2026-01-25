@@ -29,7 +29,7 @@ class WebSearcher:
             logger.error(f"Failed to initialize Exa client: {e}")
             raise
 
-    def _truncate_content(self, text: str, max_chars: int = 400) -> str:
+    def _truncate_content(self, text: str, max_chars: int = 4000) -> str:
         """
         helper to truncate text
         """
@@ -38,7 +38,7 @@ class WebSearcher:
         return text[:max_chars] + "..." if len(text) > max_chars else text
 
     def search_and_scrape(
-        self, query: str, num_results: int = 1
+        self, query: str, num_results: int = 3
     ) -> List[Dict[str, Any]]:
         """
         performs a search and returns a list of processed results.
@@ -46,7 +46,7 @@ class WebSearcher:
         print(f"\n🔍 SEARCHING: {query}")
         try:
             search_results = self.exa_client.search_and_contents(
-                query=query, text=True, num_results=num_results
+                query=query, text=True, num_results=num_results, use_autoprompt=True
             )
 
             print(f"✅ Got {len(getattr(search_results, 'results', []))} results")

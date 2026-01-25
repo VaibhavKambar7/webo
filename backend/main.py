@@ -60,7 +60,7 @@ async def ask_question(request: QueryRequest, background_tasks: BackgroundTasks)
     job_id = str(uuid.uuid4())
     try:
         job_service = JobService()
-        await job_service.create_job(job_id,request.query, request.chat_id)
+        await job_service.create_job(job_id,request.query, request.chat_id, request.is_agentic)
 
         return AskResponse(job_id=job_id)
 

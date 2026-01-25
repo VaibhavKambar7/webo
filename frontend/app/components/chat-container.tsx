@@ -64,6 +64,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [isAgentic, setIsAgentic] = useState<boolean>(false);
 
   const [currentChatId, setCurrentChatId] = useState<string | undefined>(
     initialChatId,
@@ -272,6 +273,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
         body: JSON.stringify({
           query: userMessage.content,
           chat_id: finalChatId,
+          is_agentic: isAgentic,
         }),
       });
 
@@ -548,7 +550,23 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                       }`}
                       disabled={loading}
                     />
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                      <button
+                        onClick={() => setIsAgentic(!isAgentic)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-xs font-medium cursor-pointer ${
+                          isAgentic
+                            ? "bg-blue-600/10 text-blue-500 border border-blue-500/20"
+                            : theme === "dark"
+                              ? "text-gray-500 hover:text-gray-400 border border-transparent"
+                              : "text-gray-400 hover:text-gray-500 border border-transparent"
+                        }`}
+                        title="Deep Research uses an agentic workflow for complex queries"
+                      >
+                        <Layers
+                          className={`w-3.5 h-3.5 ${isAgentic ? "animate-pulse" : ""}`}
+                        />
+                        <span>Deep Research</span>
+                      </button>
                       <button
                         onClick={handleSearch}
                         disabled={!query.trim() || loading}
@@ -826,6 +844,24 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                   disabled={loading}
                 />
                 <div className="pr-2 flex items-center gap-2">
+                  {!loading && (
+                    <button
+                      onClick={() => setIsAgentic(!isAgentic)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-xs font-medium cursor-pointer ${
+                        isAgentic
+                          ? "bg-blue-600/10 text-blue-500 border border-blue-500/20"
+                          : theme === "dark"
+                            ? "text-gray-500 hover:text-gray-400 border border-transparent"
+                            : "text-gray-400 hover:text-gray-500 border border-transparent"
+                      }`}
+                      title="Deep Research uses an agentic workflow for complex queries"
+                    >
+                      <Layers
+                        className={`w-3.5 h-3.5 ${isAgentic ? "animate-pulse" : ""}`}
+                      />
+                      <span>Deep Research</span>
+                    </button>
+                  )}
                   {loading ? (
                     <button
                       onClick={stopSearch}

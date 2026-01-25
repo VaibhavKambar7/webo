@@ -7,6 +7,7 @@ from typing import List, Optional, Literal, Dict, Any
 class QueryRequest(BaseModel):
     query: str
     chat_id: str
+    is_agentic: bool = False
 
 
 class AskResponse(BaseModel):
@@ -49,6 +50,7 @@ class JobState(BaseModel):
     chat_id: str
     status: str = "PENDING"
     original_query: str
+    is_agentic: bool = False
     sub_queries: List[str] = []
     memory: List[ReActStep] = []
     sources: List[Dict[str, Any]] = []
