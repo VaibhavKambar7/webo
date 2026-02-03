@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from typing import Any, Dict, List
 from app.core.config import settings
 from exa_py import Exa
@@ -18,7 +19,7 @@ logger.addHandler(file_handler)
 
 class WebSearcher:
     """
-    a dedicated tool for searching the web using the exa api.
+    a dedicated tool for searching the web using the exa api asynchronously.
     """
 
     def __init__(self):
@@ -37,16 +38,20 @@ class WebSearcher:
             return ""
         return text[:max_chars] + "..." if len(text) > max_chars else text
 
-    def search_and_scrape(
+    async def search_and_scrape(
         self, query: str, num_results: int = 3
     ) -> List[Dict[str, Any]]:
         """
-        performs a search and returns a list of processed results.
+        performs a search and returns a list of processed results asynchronously.
         """
         print(f"\n🔍 SEARCHING: {query}")
         try:
-            search_results = self.exa_client.search_and_contents(
-                query=query, text=True, num_results=num_results, use_autoprompt=True
+            search_results = await asyncio.to_thread(
+                self.exa_client.search_and_contents,
+                query=query,
+                text=True,
+                num_results=num_results,
+                use_autoprompt=True
             )
 
             print(f"✅ Got {len(getattr(search_results, 'results', []))} results")

@@ -3,7 +3,9 @@ from app.core.schemas import ReActStep, ReActAction
 from services.agent_service import AgentService
 from services.tool_service import ToolService
 from services.synthesis_service import SynthesisService
+from services.synthesis_service import SynthesisService
 from services.decomposer_service import DecomposerService
+import asyncio
 
 
 class Orchestrator:
@@ -69,7 +71,8 @@ class Orchestrator:
                     state.status = "WORKING"
                     yield state
 
-                    observation, results = self.tool.execute(tool_name, tool_input)
+
+                    observation, results = await self.tool.execute(tool_name, tool_input)
 
                     if results and tool_name == "web_search":
                         source_citations = [
@@ -104,8 +107,9 @@ class Orchestrator:
                 state.status = "WORKING"
                 yield state
                 
-                for query in sub_queries:
-                    observation, results = self.tool.execute("web_search", query)
+                
+                async def process_query(query):
+                    observation, results = await self.tool.execute("web_search", query)
                     
                     if results:
                         source_citations = [
@@ -125,6 +129,8 @@ class Orchestrator:
                         action=ReActAction(tool="web_search", input=query),
                         observation=observation
                     ))
+
+                await asyncio.gather(*[process_query(query) for query in sub_queries])
                 
                 await self.job_service.update_job_state(state)
                 yield state

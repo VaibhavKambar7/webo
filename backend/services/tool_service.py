@@ -9,15 +9,16 @@ class ToolService:
     def __init__(self):
         self.web_searcher = WebSearcher()
 
-    def execute(self, tool_name: str, tool_input: str) -> str:
+    async def execute(self, tool_name: str, tool_input: str) -> str:
         """
         router to execute the correct tool and return a string observation.
         """
         observation = ""
+        results = None
 
         try:
             if tool_name == "web_search":
-                results = self.web_searcher.search_and_scrape(tool_input)
+                results = await self.web_searcher.search_and_scrape(tool_input)
                 observation = self._format_search_results(results)
 
             else:
