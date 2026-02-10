@@ -41,10 +41,10 @@ class Orchestrator:
                         memory = state.memory
                     )
 
-                    thought = action_decision.get("thought","")
-                    action = action_decision.get("action",{})
-                    tool_name = action.get("tool")
-                    tool_input = action.get("input")
+                    thought = action_decision.thought
+                    action_object = action_decision.action 
+                    tool_name = action_object.tool
+                    tool_input = action_object.input
 
                     current_step = ReActStep(
                         thought = thought,

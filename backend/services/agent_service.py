@@ -1,44 +1,48 @@
 import json
 from app.core.config import settings
-from app.core.schemas import ReActStep
-from typing import List, Dict, Any
+from typing import List
 import google.generativeai as genai
+from app.core.schemas import ReActStep, AgentResponse, Action
 
 class AgentService:
     def __init__(self):
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel(
-            "gemini-2.5-flash-lite",
-            generation_config={"response_mime_type": "application/json"},
-        )
+        self.model = genai.GenerativeModel("gemini-2.5-flash-lite")
 
-    async def think(self, sub_query: str, memory: List[ReActStep]) -> Dict[str, Any]:
+    async def think(self, sub_query: str, memory: List[ReActStep]) -> AgentResponse:
         """
         (PROMPT) This is the "Think" step of the ReAct loop.
-        Decides the next action to take.
+        Decides the next action to take using structured output.
         """
 
         prompt = self._build_react_prompt(sub_query, memory)
 
         try:
-
-            response = await self.model.generate_content_async(prompt)
+            response = await self.model.generate_content_async(
+                prompt,
+                generation_config=genai.GenerationConfig(
+                    response_mime_type="application/json",
+                    response_schema=AgentResponse
+                )
+            )
             result = json.loads(response.text)
-            return result
-
+            
+            return AgentResponse(**result)
 
         except Exception as e:
             print(f"❌ Error in agent.think(): {e}")
-            return {
-                "thought": "An error occurred during thinking. Concluding this loop.",
-                "action": {"tool": "final_answer", "input": None},
-            }
+            # Fallback safe response
+            return AgentResponse(
+                thought="An error occurred during thinking. Concluding this loop.",
+                action=Action(tool="final_answer", input="Error occurred"),
+                confidence=0.0
+            )
 
     def _build_react_prompt(self, sub_query: str, memory: List[ReActStep]) -> str:
         """Enhanced prompt for agentic decision-making."""
         
         history = "\n".join([
-            f"Thought: {step.thought}\nAction: {step.action.model_dump_json()}\nObservation: {step.observation}"
+            f"Thought: {step.thought}\nAction: {step.action.tool}({step.action.input})\nObservation: {step.observation}"
             for step in memory
         ])
         
@@ -49,14 +53,9 @@ class AgentService:
         
         AVAILABLE TOOLS:
         1. web_search(query: str): Search the web for information
-        - Use this when you need more information
-        - Be specific with search queries
-        - You can use this multiple times with different queries
         
-        2. final_answer(): Call this when you have SUFFICIENT information to answer
-        - Only use this when you're confident you can answer the query
-        - Don't use this if you need more information
-        - Also when calling final_answer, provide the comprehensive answer text in the input field.
+        2. final_answer(answer: str): Call this when you have SUFFICIENT information to answer. 
+           Put the comprehensive final answer in the 'input' field.
         
         YOUR WORK SO FAR:
         {history if history else "No actions taken yet."}
@@ -64,20 +63,9 @@ class AgentService:
         DECISION RULES:
         - If you have NO information yet, start with a web search
         - If search results are insufficient, do MORE targeted searches
-        - If search results are off-topic, try different search terms
         - If you have enough information to answer, call final_answer
         - Be efficient: don't search more than necessary
-        - Maximum 5-7 searches for complex queries
         
-        Based on your goal and work history, what should you do NEXT?
-        
-        Respond ONLY with JSON:
-        {{
-        "thought": "Your reasoning for the next step (1-2 sentences)",
-        "action": {{
-            "tool": "web_search" or "final_answer",
-            "input": "search query" or null
-        }}
-        }}
+        Respond with the JSON schema provided.
         """
         return prompt

@@ -56,3 +56,12 @@ class JobState(BaseModel):
     sources: List[Dict[str, Any]] = []
     final_answer: Optional[str] = None
     error: Optional[str] = None
+
+class Action(BaseModel):
+    tool: Literal["web_search","final_answer"]
+    input: str
+
+class AgentResponse(BaseModel):
+    thought:str
+    action: Action
+    confidence: float
