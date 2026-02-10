@@ -56,6 +56,7 @@ class AgentService:
         2. final_answer(): Call this when you have SUFFICIENT information to answer
         - Only use this when you're confident you can answer the query
         - Don't use this if you need more information
+        - Also when calling final_answer, provide the comprehensive answer text in the input field.
         
         YOUR WORK SO FAR:
         {history if history else "No actions taken yet."}

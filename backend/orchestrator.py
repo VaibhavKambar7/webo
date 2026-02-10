@@ -3,7 +3,6 @@ from app.core.schemas import ReActStep, ReActAction
 from services.agent_service import AgentService
 from services.tool_service import ToolService
 from services.synthesis_service import SynthesisService
-from services.synthesis_service import SynthesisService
 from services.decomposer_service import DecomposerService
 import asyncio
 
@@ -53,6 +52,14 @@ class Orchestrator:
                     )
 
                     if tool_name == "final_answer":
+
+                        if tool_input:
+                            state.final_answer = tool_input
+                            state.status = "COMPLETED"
+                            await self.job_service.update_job_state(state)
+                            yield state
+                            break
+
                         state.status = "SYNTHESIZING"
                         yield state
 
