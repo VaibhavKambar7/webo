@@ -66,3 +66,4 @@ asyncpg
 psycopg2-binary
 pydantic-settings
 greenlet
+tiktoken

@@ -2,14 +2,14 @@ import uuid
 import json
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.schemas import AskResponse, QueryRequest
+from backend.app.core.schemas import AskResponse, QueryRequest
 from pydantic import BaseModel
-from app.services.job_service import JobService
-from app.services.chat_service import ChatService
-from orchestrator import Orchestrator
+from backend.app.services.job_service import JobService
+from backend.app.services.chat_service import ChatService
+from backend.orchestrator import Orchestrator
 from fastapi.responses import StreamingResponse
 from contextlib import asynccontextmanager
-from app.core.database import engine, Base
+from backend.app.core.database import engine, Base
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

@@ -1,7 +1,7 @@
 from typing import List, Optional
 from sqlalchemy.future import select
-from app.core.database import AsyncSessionLocal
-from app.models.sql_models import Job
+from backend.app.core.database import AsyncSessionLocal
+from backend.app.models.sql_models import Job
 
 class JobRepository:
 

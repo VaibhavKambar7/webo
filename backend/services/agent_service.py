@@ -1,8 +1,8 @@
 import json
-from app.core.config import settings
+from backend.app.core.config import settings
 from typing import List
 import google.generativeai as genai
-from app.core.schemas import ReActStep, AgentResponse, Action
+from backend.app.core.schemas import ReActStep, AgentResponse, Action
 
 class AgentService:
     def __init__(self):

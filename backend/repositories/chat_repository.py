@@ -1,7 +1,7 @@
 from typing import Optional
 from sqlalchemy.future import select
-from app.core.database import AsyncSessionLocal
-from app.models.sql_models import Chat
+from backend.app.core.database import AsyncSessionLocal
+from backend.app.models.sql_models import Chat
 
 
 class ChatRepository:

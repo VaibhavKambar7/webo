@@ -1,12 +1,12 @@
-from app.core.config import settings
-from app.core.schemas import ReActStep
+from backend.app.core.config import settings
+from backend.app.core.schemas import ReActStep
 from typing import List
 import google.generativeai as genai
-from app.core.constants import MAX_RAW_WINDOW_TOKENS
-from app.utils.token import count_tokens
-from app.core.cache import ChatManager
+from backend.app.core.constants import MAX_RAW_WINDOW_TOKENS
+from backend.app.utils.token import count_tokens
+from backend.app.core.cache import ChatManager
 from fastapi import BackgroundTasks
-from app.services.chat_service import ChatService
+from backend.app.services.chat_service import ChatService
 
 class SynthesisService:
     def __init__(self, chat_id: str):

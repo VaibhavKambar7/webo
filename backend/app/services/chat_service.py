@@ -1,8 +1,8 @@
-from app.core.schemas import ChatState
-from repositories.chat_repository import ChatRepository
-from repositories.job_repository import JobRepository
+from backend.app.core.schemas import ChatState
+from backend.repositories.chat_repository import ChatRepository
+from backend.repositories.job_repository import JobRepository
 from typing import Optional,List
-from app.core.cache import ChatManager
+from backend.app.core.cache import ChatManager
 
 class ChatService:
     def __init__(self):

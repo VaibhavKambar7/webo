@@ -1,8 +1,8 @@
 import json
 import google.generativeai as genai
-from app.core.config import settings
+from backend.app.core.config import settings
 from typing import List
-from app.services.chat_service import ChatService
+from backend.app.services.chat_service import ChatService
 
 
 class DecomposerService:

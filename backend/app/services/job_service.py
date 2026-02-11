@@ -1,6 +1,6 @@
-from app.core.schemas import JobState, ReActStep
-from repositories.job_repository import JobRepository
-from app.core.cache import StateManager
+from backend.app.core.schemas import JobState, ReActStep
+from backend.repositories.job_repository import JobRepository
+from backend.app.core.cache import StateManager
 
 class JobService:
 

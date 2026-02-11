@@ -1,4 +1,4 @@
-from app.tools.web_searcher import WebSearcher
+from backend.app.tools.web_searcher import WebSearcher
 from typing import List, Any, Dict
 import logging
 

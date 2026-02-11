@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Text, JSON, DateTime, Boolean
 from sqlalchemy.sql import func
-from app.core.database import Base
+from backend.app.core.database import Base
 
 class Job(Base):
     __tablename__ = "jobs"
@@ -26,6 +26,5 @@ class Chat(Base):
     recent_convo = Column(JSON, default=[])
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
 
 

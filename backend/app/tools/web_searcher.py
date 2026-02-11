@@ -1,7 +1,7 @@
 import logging
 import asyncio
 from typing import Any, Dict, List
-from app.core.config import settings
+from backend.app.core.config import settings
 from exa_py import Exa
 
 logging.basicConfig(

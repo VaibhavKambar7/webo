@@ -1,9 +1,9 @@
-from app.services.job_service import JobService
-from app.core.schemas import ReActStep, ReActAction
-from services.agent_service import AgentService
-from services.tool_service import ToolService
-from services.synthesis_service import SynthesisService
-from services.decomposer_service import DecomposerService
+from backend.app.services.job_service import JobService
+from backend.app.core.schemas import ReActStep, ReActAction
+from backend.services.agent_service import AgentService
+from backend.services.tool_service import ToolService
+from backend.services.synthesis_service import SynthesisService
+from backend.services.decomposer_service import DecomposerService
 import asyncio
 
 
