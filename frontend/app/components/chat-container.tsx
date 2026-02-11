@@ -59,6 +59,8 @@ const getFaviconUrl = (url: string) => {
 };
 
 export default function ChatContainer({ initialChatId }: ChatContainerProps) {
+  const apiBaseUrl =
+    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [query, setQuery] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
@@ -110,7 +112,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
   const eventStreamer = async (jobId: string, assistantMessageId: string) => {
     try {
       const eventSource = new EventSource(
-        `http://localhost:8000/stream/${jobId}`,
+        `${apiBaseUrl}/stream/${jobId}`,
       );
 
       eventSource.onmessage = (e) => {
@@ -180,7 +182,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
     try {
       if (!initialChatId) return;
 
-      const response = await fetch("http://localhost:8000/get-chat", {
+      const response = await fetch(`${apiBaseUrl}/get-chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -228,7 +230,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
 
     if (!finalChatId) {
       const createIdResponse = await fetch(
-        "http://localhost:8000/create-chatId",
+        `${apiBaseUrl}/create-chatId`,
         {
           method: "POST",
           headers: {
@@ -265,7 +267,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
     }
 
     try {
-      const response = await fetch("http://localhost:8000/ask", {
+      const response = await fetch(`${apiBaseUrl}/ask`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
