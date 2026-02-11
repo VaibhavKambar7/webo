@@ -30,9 +30,11 @@ class Orchestrator:
             yield state
 
             if state.is_agentic:
-                await self._run_agent_loop(state)
+                async for next_state in self._run_agent_loop(state):
+                    yield next_state
             else:
-                await self._run_workflow(state)
+                async for next_state in self._run_workflow(state):
+                    yield next_state
 
         except Exception as e:
             import traceback
