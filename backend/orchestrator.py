@@ -88,11 +88,12 @@ class Orchestrator:
                         state.memory.append(feedback_step)
                         continue
 
-                    elif result == "FORCE_FINAL_WITH_CAVEATS":
-                        state.final_answer += "\n\nNote: The system confidence was low, so this answer may contain uncertainty."
-
                     if tool_input:
                         state.final_answer = tool_input
+
+                    if result == "FORCE_FINAL_WITH_CAVEATS":
+                        state.final_answer = (state.final_answer or "") + "\n\nNote: The system confidence was low, so this answer may contain uncertainty."
+
                         state.status = "COMPLETED"
                         await self.job_service.update_job_state(state)
                         yield state
