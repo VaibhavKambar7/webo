@@ -16,7 +16,6 @@ class DecomposerService:
         self.chat_id = chat_id
 
     async def split_into_search_queries(self, query: str) -> List[str]:
-
         content = await self.chat_service.get_chat_state(self.chat_id)
 
         summary = content.summary or None

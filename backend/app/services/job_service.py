@@ -2,13 +2,14 @@ from backend.app.core.schemas import JobState, ReActStep
 from backend.repositories.job_repository import JobRepository
 from backend.app.core.cache import StateManager
 
-class JobService:
 
+class JobService:
     def __init__(self):
         self.job_repo = JobRepository()
 
-    async def create_job(self,job_id:str,query:str,chat_id:str, is_agentic: bool = False) -> JobState:
-
+    async def create_job(
+        self, job_id: str, query: str, chat_id: str, is_agentic: bool = False
+    ) -> JobState:
         if not query or not query.strip():
             raise ValueError("Query cannot be empty.")
 
@@ -16,32 +17,33 @@ class JobService:
             raise ValueError("Chat ID is required.")
 
         state = JobState(
-            job_id = job_id,
-            chat_id = chat_id,
-            original_query = query.strip(),
-            status = "PENDING",
-            is_agentic = is_agentic
+            job_id=job_id,
+            chat_id=chat_id,
+            original_query=query.strip(),
+            status="PENDING",
+            is_agentic=is_agentic,
         )
 
         state_manager = StateManager(job_id)
 
         await state_manager.save_to_redis(state)
 
-        await self.job_repo.create({
-            "job_id": job_id,
-            "chat_id": chat_id,
-            "original_query": query.strip(),
-            "status": "PENDING",
-            "is_agentic": is_agentic,
-            "sub_queries": [],
-            "memory": [],
-            "sources": []            
-        })
+        await self.job_repo.create(
+            {
+                "job_id": job_id,
+                "chat_id": chat_id,
+                "original_query": query.strip(),
+                "status": "PENDING",
+                "is_agentic": is_agentic,
+                "sub_queries": [],
+                "memory": [],
+                "sources": [],
+            }
+        )
 
         return state
 
-    async def get_job_state(self,job_id:str) -> JobState:
-
+    async def get_job_state(self, job_id: str) -> JobState:
         state_manager = StateManager(job_id)
         state = await state_manager.get_from_redis()
 
@@ -55,48 +57,49 @@ class JobService:
 
         return self._db_job_to_state(db_job)
 
-    async def update_job_state(self,state: JobState) -> None:
+    async def update_job_state(self, state: JobState) -> None:
         self._validate_status(state.status)
 
         state_manager = StateManager(state.job_id)
         await state_manager.save_to_redis(state)
 
-        await self.job_repo.update(state.job_id, {
-            "status": state.status,
-            "sub_queries": state.sub_queries,
-            "memory": [step.model_dump() for step in state.memory],
-            "sources": state.sources,
-            "final_answer": state.final_answer,
-            "error": state.error
-        })
+        await self.job_repo.update(
+            state.job_id,
+            {
+                "status": state.status,
+                "sub_queries": state.sub_queries,
+                "memory": [step.model_dump() for step in state.memory],
+                "sources": state.sources,
+                "final_answer": state.final_answer,
+                "error": state.error,
+            },
+        )
 
-    
-    def _validate_status(self,status:str) -> None:
-        
+    def _validate_status(self, status: str) -> None:
         valid_statuses = [
-             "PENDING", 
-            "DECOMPOSING", 
-            "WORKING", 
-            "SYNTHESIZING", 
-            "COMPLETED", 
-            "FAILED"
+            "PENDING",
+            "DECOMPOSING",
+            "WORKING",
+            "SYNTHESIZING",
+            "COMPLETED",
+            "FAILED",
         ]
 
         if status not in valid_statuses:
-            raise ValueError(f"Invalid status: {status}. Must be on of {valid_statuses} ")
+            raise ValueError(
+                f"Invalid status: {status}. Must be on of {valid_statuses} "
+            )
 
-
-    def _db_job_to_state(self,db_job) -> JobState:
-
+    def _db_job_to_state(self, db_job) -> JobState:
         return JobState(
-            job_id = db_job.job_id,
-            chat_id = db_job.chat_id,
-            status = db_job.status,
-            original_query= db_job.original_query,
-            is_agentic = getattr(db_job, 'is_agentic', False),
-            sub_queries = db_job.sub_queries or [],
-            memory = [ReActStep(**step) for step in (db_job.memory or [])],
-            sources = db_job.sources or [],
-            final_answer = db_job.final_answer,
-            error = db_job.error
+            job_id=db_job.job_id,
+            chat_id=db_job.chat_id,
+            status=db_job.status,
+            original_query=db_job.original_query,
+            is_agentic=getattr(db_job, "is_agentic", False),
+            sub_queries=db_job.sub_queries or [],
+            memory=[ReActStep(**step) for step in (db_job.memory or [])],
+            sources=db_job.sources or [],
+            final_answer=db_job.final_answer,
+            error=db_job.error,
         )

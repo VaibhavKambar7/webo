@@ -11,12 +11,14 @@ from fastapi.responses import StreamingResponse
 from contextlib import asynccontextmanager
 from backend.app.core.database import engine, Base
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create tables on startup
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -33,8 +35,10 @@ app.add_middleware(
 def read_root():
     return {"message": "webo"}
 
+
 class GetChatRequest(BaseModel):
     chat_id: str
+
 
 @app.post("/get-chat")
 async def get_chats(request: GetChatRequest):
@@ -43,8 +47,8 @@ async def get_chats(request: GetChatRequest):
     """
     try:
         chat_service = ChatService()
-        messages = await  chat_service.get_chat_history(request.chat_id)
-        
+        messages = await chat_service.get_chat_history(request.chat_id)
+
         return messages
 
     except Exception as e:
@@ -60,7 +64,9 @@ async def ask_question(request: QueryRequest, background_tasks: BackgroundTasks)
     job_id = str(uuid.uuid4())
     try:
         job_service = JobService()
-        await job_service.create_job(job_id,request.query, request.chat_id, request.is_agentic)
+        await job_service.create_job(
+            job_id, request.query, request.chat_id, request.is_agentic
+        )
 
         return AskResponse(job_id=job_id)
 
@@ -79,13 +85,14 @@ async def create_chat_id():
     try:
         chat_service = ChatService()
         await chat_service.create_chat(chat_id)
-        
+
         return {"chat_id": chat_id}
 
     except ConnectionError as e:
         raise HTTPException(status_code=503, detail=f"Service unavailable: {e}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating chat id: {e}")
+
 
 @app.get("/stream/{job_id}")
 async def event_streamer(job_id: str):

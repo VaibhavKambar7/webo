@@ -8,6 +8,7 @@ from backend.app.core.cache import ChatManager
 from fastapi import BackgroundTasks
 from backend.app.services.chat_service import ChatService
 
+
 class SynthesisService:
     def __init__(self, chat_id: str):
         genai.configure(api_key=settings.GEMINI_API_KEY)
@@ -16,7 +17,12 @@ class SynthesisService:
         self.chat_service = ChatService()
         self.chat_id = chat_id
 
-    async def summarize_stream(self, original_query: str, memory: List[ReActStep], background_tasks: BackgroundTasks = None):
+    async def summarize_stream(
+        self,
+        original_query: str,
+        memory: List[ReActStep],
+        background_tasks: BackgroundTasks = None,
+    ):
         """
         Streams the synthesized answer and triggers background summarization.
         """
@@ -72,9 +78,7 @@ class SynthesisService:
 
             if background_tasks:
                 background_tasks.add_task(
-                    self.summarize_chat,
-                    original_query,
-                    final_answer
+                    self.summarize_chat, original_query, final_answer
                 )
             else:
                 await self.summarize_chat(original_query, final_answer)
@@ -92,7 +96,6 @@ class SynthesisService:
         recent_convo.append({"role": "assistant", "content": final_answer})
 
         while count_tokens(recent_convo) > MAX_RAW_WINDOW_TOKENS:
-
             if len(recent_convo) <= 2:
                 break
 
@@ -122,15 +125,11 @@ class SynthesisService:
         try:
             response = await self.model.generate_content_async(prompt)
 
-
             await self.chat_service.update_chat_summary(
-                self.chat_id,
-                summary=response.text,
-                recent_convo=recent_convo
+                self.chat_id, summary=response.text, recent_convo=recent_convo
             )
         except Exception as e:
             print(f"Error during summary generation: {e}")
-
 
     def _compile_context(self, memory: List[ReActStep]) -> str:
         """Combines all observations into a single context block."""

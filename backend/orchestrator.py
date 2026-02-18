@@ -14,6 +14,7 @@ class Orchestrator:
         self.agent = AgentService()
         self.tool = ToolService()
         self.synthesis = None
+        self.decompose = None
         self.max_iterations = 10
 
     async def run_full_query(self):
@@ -41,6 +42,7 @@ class Orchestrator:
 
             print(f"❌ Error in job {self.job_id}: {e}")
             print(f"Traceback: {traceback.format_exc()}")
+
             try:
                 state = await self.job_service.get_job_state(self.job_id)
                 state.status = "FAILED"
@@ -53,6 +55,7 @@ class Orchestrator:
     async def _run_agent_loop(self, state):
         try:
             iteration = 0
+
             while iteration < self.max_iterations:
                 iteration += 1
 
@@ -66,12 +69,28 @@ class Orchestrator:
                 tool_name = action_object.tool
                 tool_input = action_object.input
 
+                state.confidence_history.append(action_decision.confidence)
+
                 current_step = ReActStep(
                     thought=thought,
                     action=ReActAction(tool=tool_name, input=tool_input),
                 )
 
                 if tool_name == "final_answer":
+                    result = await self._reflection_policy(state)
+
+                    if result == "RETRY_SEARCH":
+                        feedback_step = ReActStep(
+                            thought="System Reflection: Confidence is low. Need more evidence.",
+                            action=ReActAction(tool="system_feedback", input="retry"),
+                            observation="Confidence is too low. Please perform deeper searches.",
+                        )
+                        state.memory.append(feedback_step)
+                        continue
+
+                    elif result == "FORCE_FINAL_WITH_CAVEATS":
+                        state.final_answer += "\n\nNote: The system confidence was low, so this answer may contain uncertainty."
+
                     if tool_input:
                         state.final_answer = tool_input
                         state.status = "COMPLETED"
@@ -84,7 +103,8 @@ class Orchestrator:
 
                     state.final_answer = ""
                     async for chunk in self.synthesis.summarize_stream(
-                        state.original_query, state.memory
+                        state.original_query,
+                        state.memory,
                     ):
                         state.final_answer += chunk
                         yield state
@@ -97,8 +117,11 @@ class Orchestrator:
                 state.status = "WORKING"
                 yield state
 
+                state.search_count += 1
+
                 observation, results = await self.tool.execute(
-                    tool_name, tool_input
+                    tool_name,
+                    tool_input,
                 )
 
                 if results and tool_name == "web_search":
@@ -113,15 +136,17 @@ class Orchestrator:
                     state.sources.extend(source_citations)
 
                 current_step.observation = observation
+                state.has_new_evidence = bool(results)
                 state.memory.append(current_step)
 
                 await self.job_service.update_job_state(state)
                 yield state
 
             if iteration >= self.max_iterations:
+                state.loop_count = iteration
                 state.status = "COMPLETED"
                 state.final_answer = (
-                    "Maximum iterations reached. Synthesizing available information.."
+                    "Maximum iterations reached. Synthesizing available information."
                 )
                 await self.job_service.update_job_state(state)
                 yield state
@@ -131,6 +156,7 @@ class Orchestrator:
 
             print(f"❌ Error in job {self.job_id}: {e}")
             print(f"Traceback: {traceback.format_exc()}")
+
             try:
                 state = await self.job_service.get_job_state(self.job_id)
                 state.status = "FAILED"
@@ -148,6 +174,7 @@ class Orchestrator:
             sub_queries = await self.decompose.split_into_search_queries(
                 state.original_query
             )
+
             state.sub_queries = sub_queries
             await self.job_service.update_job_state(state)
 
@@ -156,7 +183,8 @@ class Orchestrator:
 
             async def process_query(query):
                 observation, results = await self.tool.execute(
-                    "web_search", query
+                    "web_search",
+                    query,
                 )
 
                 if results:
@@ -173,16 +201,12 @@ class Orchestrator:
                 state.memory.append(
                     ReActStep(
                         thought=f"Searching for: {query}",
-                        action=ReActAction(
-                            tool="web_search", input=query
-                        ),
+                        action=ReActAction(tool="web_search", input=query),
                         observation=observation,
                     )
                 )
 
-            await asyncio.gather(
-                *[process_query(query) for query in sub_queries]
-            )
+            await asyncio.gather(*[process_query(query) for query in sub_queries])
 
             await self.job_service.update_job_state(state)
             yield state
@@ -191,8 +215,10 @@ class Orchestrator:
             yield state
 
             state.final_answer = ""
+
             async for chunk in self.synthesis.summarize_stream(
-                state.original_query, state.memory
+                state.original_query,
+                state.memory,
             ):
                 state.final_answer += chunk
                 yield state
@@ -208,6 +234,7 @@ class Orchestrator:
 
             print(f"❌ Error in job {self.job_id}: {e}")
             print(f"Traceback: {traceback.format_exc()}")
+
             try:
                 state = await self.job_service.get_job_state(self.job_id)
                 state.status = "FAILED"
@@ -216,3 +243,21 @@ class Orchestrator:
                 yield state
             except Exception:
                 pass
+
+    async def _reflection_policy(self, state):
+        try:
+            confidence = state.confidence
+            loop_count = state.loop_count
+
+            if confidence >= 0.8:
+                return "ACCEPT"
+
+            if confidence < 0.8 and loop_count >= self.max_iterations:
+                return "FORCE_FINAL_WITH_CAVEATS"
+
+            if confidence < 0.8:
+                return "RETRY_SEARCH"
+
+        except Exception:
+            print("Error in reflector")
+            return "RETRY_SEARCH"

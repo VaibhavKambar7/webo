@@ -3,6 +3,7 @@ from .schemas import JobState, ChatState
 from typing import Optional
 from .redis import get_redis_client
 
+
 class StateManager:
     def __init__(self, job_id: str):
         self.job_id = job_id
@@ -10,22 +11,20 @@ class StateManager:
     async def get_redis(self):
         return await get_redis_client()
 
-    async def save_to_redis(self, state:JobState) -> None:
-
+    async def save_to_redis(self, state: JobState) -> None:
         redis = await self.get_redis()
 
-        try: 
-            await redis.hset(f"job:{self.job_id}",mapping={
-                "status": state.status,
-                "data": state.model_dump_json()
-            })
-        
+        try:
+            await redis.hset(
+                f"job:{self.job_id}",
+                mapping={"status": state.status, "data": state.model_dump_json()},
+            )
+
         except Exception as e:
             print(f"Error saving to Redis: {e}")
             raise ValueError(f"Error saving to redis: {e}")
-    
-    async def get_from_redis(self) -> Optional[JobState]:
 
+    async def get_from_redis(self) -> Optional[JobState]:
         redis = await self.get_redis()
 
         try:
@@ -36,7 +35,7 @@ class StateManager:
         except Exception as e:
             print(f"Error reading from redis:{e}")
             return None
-        
+
     async def delete_from_redis(self) -> None:
         redis = await self.get_redis()
         await redis.delete(f"job:{self.job_id}")

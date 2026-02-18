@@ -4,6 +4,7 @@ from typing import List
 import google.generativeai as genai
 from backend.app.core.schemas import ReActStep, AgentResponse, Action
 
+
 class AgentService:
     def __init__(self):
         genai.configure(api_key=settings.GEMINI_API_KEY)
@@ -21,12 +22,11 @@ class AgentService:
             response = await self.model.generate_content_async(
                 prompt,
                 generation_config=genai.GenerationConfig(
-                    response_mime_type="application/json",
-                    response_schema=AgentResponse
-                )
+                    response_mime_type="application/json", response_schema=AgentResponse
+                ),
             )
             result = json.loads(response.text)
-            
+
             return AgentResponse(**result)
 
         except Exception as e:
@@ -35,17 +35,19 @@ class AgentService:
             return AgentResponse(
                 thought="An error occurred during thinking. Concluding this loop.",
                 action=Action(tool="final_answer", input="Error occurred"),
-                confidence=0.0
+                confidence=0.0,
             )
 
     def _build_react_prompt(self, sub_query: str, memory: List[ReActStep]) -> str:
         """Enhanced prompt for agentic decision-making."""
-        
-        history = "\n".join([
-            f"Thought: {step.thought}\nAction: {step.action.tool}({step.action.input})\nObservation: {step.observation}"
-            for step in memory
-        ])
-        
+
+        history = "\n".join(
+            [
+                f"Thought: {step.thought}\nAction: {step.action.tool}({step.action.input})\nObservation: {step.observation}"
+                for step in memory
+            ]
+        )
+
         prompt = f"""
         You are an AI research assistant with the ability to decide your next action.
         
@@ -55,7 +57,8 @@ class AgentService:
         1. web_search(query: str): Search the web for information
         
         2. final_answer(answer: str): Call this when you have SUFFICIENT information to answer. 
-           Put the comprehensive final answer in the 'input' field.
+           Put the comprehensive final answer in the 'input' field. Also return confidence score between 0.0 to 1.0,
+           where 0 being less confidence and 1 being more.
         
         YOUR WORK SO FAR:
         {history if history else "No actions taken yet."}

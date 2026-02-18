@@ -2,6 +2,7 @@ from sqlalchemy import Column, String, Text, JSON, DateTime, Boolean
 from sqlalchemy.sql import func
 from backend.app.core.database import Base
 
+
 class Job(Base):
     __tablename__ = "jobs"
 
@@ -18,6 +19,7 @@ class Job(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+
 class Chat(Base):
     __tablename__ = "chats"
 
@@ -26,5 +28,3 @@ class Chat(Base):
     recent_convo = Column(JSON, default=[])
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
-

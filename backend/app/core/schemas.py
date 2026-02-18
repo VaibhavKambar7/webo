@@ -25,11 +25,13 @@ class StatusResponse(BaseModel):
     sources: Optional[List[Dict[str, Any]]] = None
     memory: Optional[List[Dict[str, Any]]] = None
 
+
 class ChatState(BaseModel):
     chat_id: str
     # job_ids: List[str] = []
     summary: Optional[str] = None
-    recent_convo: List[Dict[str,Any]] = []
+    recent_convo: List[Dict[str, Any]] = []
+
 
 # internal state schemas
 
@@ -56,12 +58,19 @@ class JobState(BaseModel):
     sources: List[Dict[str, Any]] = []
     final_answer: Optional[str] = None
     error: Optional[str] = None
+    loop_count: int = 0
+    search_count: int = 0
+    confidence: float = 0.0
+    confidence_history: List[float] = []
+    has_new_evidence: bool = False
+
 
 class Action(BaseModel):
-    tool: Literal["web_search","final_answer"]
+    tool: Literal["web_search", "final_answer"]
     input: str
 
+
 class AgentResponse(BaseModel):
-    thought:str
+    thought: str
     action: Action
     confidence: float

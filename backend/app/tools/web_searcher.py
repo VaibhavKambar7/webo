@@ -51,7 +51,7 @@ class WebSearcher:
                 query=query,
                 text=True,
                 num_results=num_results,
-                use_autoprompt=True
+                use_autoprompt=True,
             )
 
             print(f"✅ Got {len(getattr(search_results, 'results', []))} results")
