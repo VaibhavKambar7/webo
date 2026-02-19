@@ -73,7 +73,19 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
   );
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+    }
+  };
+
+  useEffect(() => {
+    adjustHeight();
+  }, [query]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -93,8 +105,8 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
   }, [messages, loading]);
 
   useEffect(() => {
-    if (!loading && inputRef.current) {
-      inputRef.current.focus();
+    if (!loading && textareaRef.current) {
+      textareaRef.current.focus();
     }
   }, [loading]);
 
@@ -111,9 +123,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
 
   const eventStreamer = async (jobId: string, assistantMessageId: string) => {
     try {
-      const eventSource = new EventSource(
-        `${apiBaseUrl}/stream/${jobId}`,
-      );
+      const eventSource = new EventSource(`${apiBaseUrl}/stream/${jobId}`);
 
       eventSource.onmessage = (e) => {
         const data = JSON.parse(e.data);
@@ -191,7 +201,6 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
       });
 
       const messages = await response.json();
-
       setMessages(messages);
     } catch (err) {
       console.log("Get chats error:", err);
@@ -229,16 +238,13 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
     let finalChatId = currentChatId;
 
     if (!finalChatId) {
-      const createIdResponse = await fetch(
-        `${apiBaseUrl}/create-chatId`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({}),
+      const createIdResponse = await fetch(`${apiBaseUrl}/create-chatId`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({}),
+      });
 
       if (createIdResponse.ok) {
         const data = await createIdResponse.json();
@@ -249,17 +255,11 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
           setCurrentChatId(newChatId);
           window.history.replaceState({}, "", `/c/${newChatId}`);
         } else {
-          console.error(
-            "Server did not return a valid chat ID in the response body.",
-          );
           setError("Failed to start chat session.");
           setLoading(false);
           return;
         }
       } else {
-        console.error(
-          `Failed to create chat ID. Status: ${createIdResponse.status}`,
-        );
         setError("Failed to start chat session.");
         setLoading(false);
         return;
@@ -293,7 +293,6 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
 
       await eventStreamer(job_id, assistantMessageId);
     } catch (err) {
-      console.error("Search error:", err);
       setError("Failed to submit query. Please try again.");
       setLoading(false);
     }
@@ -343,7 +342,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
       PENDING: {
         label: "Initializing...",
         icon: Loader,
-        color: theme === "dark" ? "text-gray-400" : "text-gray-400",
+        color: "text-gray-400",
       },
       DECOMPOSING: {
         label: "Breaking down request...",
@@ -368,7 +367,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
     const statusInfo = statusMap[status] || {
       label: status,
       icon: Loader,
-      color: theme === "dark" ? "text-gray-400" : "text-gray-400",
+      color: "text-gray-400",
     };
     const Icon = statusInfo.icon;
 
@@ -378,11 +377,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
       >
         {Icon && (
           <Icon
-            className={`w-4 h-4 ${
-              status === "PENDING" || status === "SYNTHESIZING"
-                ? "animate-spin"
-                : ""
-            }`}
+            className={`w-4 h-4 ${status === "PENDING" || status === "SYNTHESIZING" ? "animate-spin" : ""}`}
           />
         )}
         <span>{statusInfo.label}</span>
@@ -399,13 +394,11 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
         .markdown-content > *:last-child {
           margin-bottom: 0;
         }
-
         .markdown-content p {
           margin-bottom: 1.25rem;
           line-height: 1.75;
           color: ${theme === "dark" ? "#d1d5db" : "#374151"};
         }
-
         .markdown-content h1,
         .markdown-content h2,
         .markdown-content h3,
@@ -416,7 +409,6 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
           color: ${theme === "dark" ? "#f9fafb" : "#111827"};
           line-height: 1.3;
         }
-
         .markdown-content h1 {
           font-size: 1.5rem;
         }
@@ -426,23 +418,19 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
         .markdown-content h3 {
           font-size: 1.125rem;
         }
-
         .markdown-content ul,
         .markdown-content ol {
           margin-bottom: 1.25rem;
           padding-left: 1.5rem;
           color: ${theme === "dark" ? "#d1d5db" : "#374151"};
         }
-
         .markdown-content li {
           margin-bottom: 0.5rem;
           padding-left: 0.25rem;
         }
-
         .markdown-content li::marker {
           color: ${theme === "dark" ? "#6b7280" : "#9ca3af"};
         }
-
         .markdown-content a {
           color: ${theme === "dark" ? "#60a5fa" : "#2563eb"};
           text-decoration: none;
@@ -451,7 +439,6 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
         .markdown-content a:hover {
           text-decoration: underline;
         }
-
         .markdown-content code {
           background-color: ${theme === "dark" ? "#374151" : "#f3f4f6"};
           color: ${theme === "dark" ? "#e5e7eb" : "#1f2937"};
@@ -461,22 +448,19 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
           font-family:
             ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         }
-
         .markdown-content pre {
-          background-color: ${theme === "dark" ? "#1f2937" : "#1f2937"};
+          background-color: #1f2937;
           padding: 1rem;
           border-radius: 0.5rem;
           overflow-x: auto;
           margin-bottom: 1.5rem;
         }
-
         .markdown-content pre code {
           background-color: transparent;
           color: #f3f4f6;
           padding: 0;
           font-size: 0.875em;
         }
-
         .markdown-content blockquote {
           border-left: 4px solid ${theme === "dark" ? "#4b5563" : "#e5e7eb"};
           padding-left: 1rem;
@@ -484,7 +468,6 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
           font-style: italic;
           color: ${theme === "dark" ? "#9ca3af" : "#6b7280"};
         }
-
         .markdown-content strong {
           color: ${theme === "dark" ? "#f3f4f6" : "#111827"};
           font-weight: 600;
@@ -497,11 +480,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
         <div className="fixed top-4 right-4 z-50">
           <button
             onClick={toggleTheme}
-            className={`p-2 rounded-lg transition-colors ${
-              theme === "dark"
-                ? "bg-gray-800 hover:bg-gray-700 text-gray-200"
-                : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200"
-            }`}
+            className={`p-2 rounded-lg transition-colors ${theme === "dark" ? "bg-gray-800 hover:bg-gray-700 text-gray-200" : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200"}`}
           >
             {theme === "dark" ? (
               <Sun className="w-5 h-5 cursor-pointer" />
@@ -514,7 +493,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
           {messages.length === 0 && !currentChatId ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
-              <div className="w-full max-w-lg space-y-8">
+              <div className="w-full max-w-2xl space-y-8">
                 <div className="text-center space-y-2">
                   <h2
                     className={`text-3xl font-semibold tracking-tight ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}
@@ -530,39 +509,28 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
 
                 <div className="relative">
                   <div
-                    className={`relative rounded-xl shadow-sm focus-within:ring-1 transition-all duration-200 ${
-                      theme === "dark"
-                        ? "bg-gray-800 border border-gray-700 focus-within:border-gray-600 focus-within:ring-gray-600"
-                        : "bg-white border border-gray-200 focus-within:border-gray-400 focus-within:ring-gray-400"
-                    }`}
+                    className={`relative rounded-xl shadow-sm focus-within:ring-1 transition-all duration-200 ${theme === "dark" ? "bg-gray-800 border border-gray-700 focus-within:border-gray-600 focus-within:ring-gray-600" : "bg-white border border-gray-200 focus-within:border-gray-400 focus-within:ring-gray-400"}`}
                   >
-                    <input
-                      ref={inputRef}
-                      type="text"
+                    <textarea
+                      ref={textareaRef}
                       placeholder="What do you want to know?"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      onKeyDown={(e) =>
-                        e.key === "Enter" && !loading && handleSearch()
-                      }
-                      className={`w-full px-5 py-4 text-base bg-transparent focus:outline-none rounded-xl ${
-                        theme === "dark"
-                          ? "text-gray-100 placeholder-gray-500"
-                          : "text-gray-900 placeholder-gray-400"
-                      }`}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey && !loading) {
+                          e.preventDefault();
+                          handleSearch();
+                        }
+                      }}
+                      rows={1}
+                      className={`w-full px-5 py-4 text-base bg-transparent focus:outline-none rounded-xl resize-none overflow-hidden min-h-[56px] leading-relaxed ${theme === "dark" ? "text-gray-100 placeholder-gray-500" : "text-gray-900 placeholder-gray-400"}`}
                       disabled={loading}
                     />
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    <div className="absolute right-2 bottom-2 flex items-center gap-2">
                       <button
                         onClick={() => setIsAgentic(!isAgentic)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-xs font-medium cursor-pointer ${
-                          isAgentic
-                            ? "bg-blue-600/10 text-blue-500 border border-blue-500/20"
-                            : theme === "dark"
-                              ? "text-gray-500 hover:text-gray-400 border border-transparent"
-                              : "text-gray-400 hover:text-gray-500 border border-transparent"
-                        }`}
-                        title="Deep Research uses an agentic workflow for complex queries"
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-xs font-medium cursor-pointer ${isAgentic ? "bg-blue-600/10 text-blue-500 border border-blue-500/20" : theme === "dark" ? "text-gray-500 hover:text-gray-400" : "text-gray-400 hover:text-gray-500"}`}
+                        title="Deep Research uses an agentic workflow"
                       >
                         <Layers
                           className={`w-3.5 h-3.5 ${isAgentic ? "animate-pulse" : ""}`}
@@ -572,11 +540,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                       <button
                         onClick={handleSearch}
                         disabled={!query.trim() || loading}
-                        className={`p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
-                          theme === "dark"
-                            ? "bg-gray-700 text-white hover:bg-gray-600"
-                            : "bg-gray-900 text-white hover:bg-gray-700"
-                        }`}
+                        className={`p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${theme === "dark" ? "bg-gray-700 text-white hover:bg-gray-600" : "bg-gray-900 text-white hover:bg-gray-700"}`}
                       >
                         <ArrowUp className="w-5 h-5" />
                       </button>
@@ -586,11 +550,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
 
                 {error && (
                   <div
-                    className={`p-3 rounded-lg flex items-center gap-3 text-sm ${
-                      theme === "dark"
-                        ? "bg-red-900/20 border border-red-800 text-red-400"
-                        : "bg-red-50 border border-red-200 text-red-600"
-                    }`}
+                    className={`p-3 rounded-lg flex items-center gap-3 text-sm ${theme === "dark" ? "bg-red-900/20 border border-red-800 text-red-400" : "bg-red-50 border border-red-200 text-red-600"}`}
                   >
                     <AlertCircle className="w-4 h-4 flex-shrink-0" />
                     <span>{error}</span>
@@ -605,9 +565,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                   {message.role === "user" && (
                     <div className="flex justify-end mb-4">
                       <div
-                        className={`text-xl font-medium leading-relaxed max-w-[90%] ${
-                          theme === "dark" ? "text-gray-100" : "text-gray-900"
-                        }`}
+                        className={`text-xl font-medium leading-relaxed max-w-[90%] ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}
                       >
                         {message.content}
                       </div>
@@ -628,26 +586,14 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                             (message.sources &&
                               message.sources.length > 0)) && (
                             <div
-                              className={`rounded-lg overflow-hidden shadow-sm mb-6 ${
-                                theme === "dark"
-                                  ? "border border-gray-700 bg-gray-800"
-                                  : "border border-gray-200 bg-white"
-                              }`}
+                              className={`rounded-lg overflow-hidden shadow-sm mb-6 ${theme === "dark" ? "border border-gray-700 bg-gray-800" : "border border-gray-200 bg-white"}`}
                             >
                               <button
                                 onClick={() => toggleExpansion(message.id)}
-                                className={`w-full flex items-center justify-between px-4 py-2.5 transition-colors cursor-pointer ${
-                                  theme === "dark"
-                                    ? "bg-gray-800/50 hover:bg-gray-700/50 border-b border-gray-700"
-                                    : "bg-gray-50 hover:bg-gray-100 border-b border-gray-100"
-                                }`}
+                                className={`w-full flex items-center justify-between px-4 py-2.5 transition-colors cursor-pointer ${theme === "dark" ? "bg-gray-800/50 hover:bg-gray-700/50 border-b border-gray-700" : "bg-gray-50 hover:bg-gray-100 border-b border-gray-100"}`}
                               >
                                 <div
-                                  className={`flex items-center gap-2 text-xs font-medium uppercase tracking-wide ${
-                                    theme === "dark"
-                                      ? "text-gray-400"
-                                      : "text-gray-500"
-                                  }`}
+                                  className={`flex items-center gap-2 text-xs font-medium uppercase tracking-wide ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
                                 >
                                   <Layers className="w-3.5 h-3.5" />
                                   <span>
@@ -675,11 +621,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                     message.subQueries.length > 0 && (
                                       <div className="space-y-2">
                                         <div
-                                          className={`text-xs font-semibold uppercase ${
-                                            theme === "dark"
-                                              ? "text-gray-500"
-                                              : "text-gray-400"
-                                          }`}
+                                          className={`text-xs font-semibold uppercase ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}
                                         >
                                           Research Steps
                                         </div>
@@ -688,11 +630,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                             (subQuery, idx) => (
                                               <div
                                                 key={idx}
-                                                className={`flex items-start gap-2.5 text-sm ${
-                                                  theme === "dark"
-                                                    ? "text-gray-300"
-                                                    : "text-gray-600"
-                                                }`}
+                                                className={`flex items-start gap-2.5 text-sm ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}
                                               >
                                                 <div
                                                   className={`mt-0.5 ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}
@@ -711,11 +649,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                     message.sources.length > 0 && (
                                       <div className="space-y-2">
                                         <div
-                                          className={`text-xs font-semibold uppercase ${
-                                            theme === "dark"
-                                              ? "text-gray-500"
-                                              : "text-gray-400"
-                                          }`}
+                                          className={`text-xs font-semibold uppercase ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}
                                         >
                                           References
                                         </div>
@@ -731,11 +665,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                                   href={source.url}
                                                   target="_blank"
                                                   rel="noopener noreferrer"
-                                                  className={`flex items-center gap-3 p-2.5 rounded-lg transition-all group cursor-pointer ${
-                                                    theme === "dark"
-                                                      ? "bg-gray-800/50 border border-gray-700 hover:border-gray-600 hover:bg-gray-700/50"
-                                                      : "bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                                                  }`}
+                                                  className={`flex items-center gap-3 p-2.5 rounded-lg transition-all group cursor-pointer ${theme === "dark" ? "bg-gray-800/50 border border-gray-700 hover:border-gray-600 hover:bg-gray-700/50" : "bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}
                                                 >
                                                   <div className="flex-shrink-0 w-4 h-4 rounded-sm overflow-hidden opacity-70">
                                                     <img
@@ -754,21 +684,11 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                                   </div>
                                                   <div className="flex-1 min-w-0">
                                                     <div
-                                                      className={`text-sm font-medium truncate transition-colors ${
-                                                        theme === "dark"
-                                                          ? "text-gray-200 group-hover:text-blue-400"
-                                                          : "text-gray-800 group-hover:text-blue-600"
-                                                      }`}
+                                                      className={`text-sm font-medium truncate transition-colors ${theme === "dark" ? "text-gray-200 group-hover:text-blue-400" : "text-gray-800 group-hover:text-blue-600"}`}
                                                     >
                                                       {source.title || hostname}
                                                     </div>
-                                                    <div
-                                                      className={`text-xs truncate ${
-                                                        theme === "dark"
-                                                          ? "text-gray-500"
-                                                          : "text-gray-500"
-                                                      }`}
-                                                    >
+                                                    <div className="text-xs truncate text-gray-500">
                                                       {hostname}
                                                     </div>
                                                   </div>
@@ -793,11 +713,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                             message.status !== "COMPLETED" && (
                               <div className="flex flex-col gap-2 animate-pulse mt-2">
                                 <div
-                                  className={`h-2 rounded w-1/3 ${
-                                    theme === "dark"
-                                      ? "bg-gray-700"
-                                      : "bg-gray-200"
-                                  }`}
+                                  className={`h-2 rounded w-1/3 ${theme === "dark" ? "bg-gray-700" : "bg-gray-200"}`}
                                 ></div>
                               </div>
                             )
@@ -815,48 +731,32 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
 
         {(messages.length > 0 || currentChatId) && (
           <div
-            className={`fixed bottom-0 left-0 right-0 z-20 ${
-              theme === "dark"
-                ? "bg-gray-900 border-t border-gray-800"
-                : "bg-gray-50 border-t border-gray-200"
-            }`}
+            className={`fixed bottom-0 left-0 right-0 z-20 ${theme === "dark" ? "bg-gray-900 border-t border-gray-800" : "bg-gray-50 border-t border-gray-200"}`}
           >
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
               <div
-                className={`relative rounded-xl shadow-sm flex items-center transition-colors ${
-                  theme === "dark"
-                    ? "bg-gray-800 border border-gray-700 focus-within:border-gray-600"
-                    : "bg-white border border-gray-200 focus-within:border-gray-400"
-                }`}
+                className={`relative rounded-xl shadow-sm flex items-end transition-colors ${theme === "dark" ? "bg-gray-800 border border-gray-700 focus-within:border-gray-600" : "bg-white border border-gray-200 focus-within:border-gray-400"}`}
               >
-                <input
-                  ref={inputRef}
-                  type="text"
+                <textarea
+                  ref={textareaRef}
                   placeholder="Ask a follow up..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) =>
-                    e.key === "Enter" && !loading && handleSearch()
-                  }
-                  className={`flex-1 px-4 py-3 text-base bg-transparent focus:outline-none ${
-                    theme === "dark"
-                      ? "text-gray-100 placeholder-gray-500"
-                      : "text-gray-900 placeholder-gray-400"
-                  }`}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey && !loading) {
+                      e.preventDefault();
+                      handleSearch();
+                    }
+                  }}
+                  rows={1}
+                  className={`flex-1 px-4 py-3 text-base bg-transparent focus:outline-none resize-none overflow-hidden min-h-[48px] leading-relaxed ${theme === "dark" ? "text-gray-100 placeholder-gray-500" : "text-gray-900 placeholder-gray-400"}`}
                   disabled={loading}
                 />
-                <div className="pr-2 flex items-center gap-2">
+                <div className="pr-2 pb-2 flex items-center gap-2">
                   {!loading && (
                     <button
                       onClick={() => setIsAgentic(!isAgentic)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-xs font-medium cursor-pointer ${
-                        isAgentic
-                          ? "bg-blue-600/10 text-blue-500 border border-blue-500/20"
-                          : theme === "dark"
-                            ? "text-gray-500 hover:text-gray-400 border border-transparent"
-                            : "text-gray-400 hover:text-gray-500 border border-transparent"
-                      }`}
-                      title="Deep Research uses an agentic workflow for complex queries"
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-xs font-medium cursor-pointer ${isAgentic ? "bg-blue-600/10 text-blue-500 border border-blue-500/20" : theme === "dark" ? "text-gray-500 hover:text-gray-400" : "text-gray-400 hover:text-gray-500"}`}
                     >
                       <Layers
                         className={`w-3.5 h-3.5 ${isAgentic ? "animate-pulse" : ""}`}
@@ -867,11 +767,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                   {loading ? (
                     <button
                       onClick={stopSearch}
-                      className={`p-2 transition-colors cursor-pointer ${
-                        theme === "dark"
-                          ? "text-gray-500 hover:text-red-400"
-                          : "text-gray-400 hover:text-red-500"
-                      }`}
+                      className={`p-2 transition-colors cursor-pointer ${theme === "dark" ? "text-gray-500 hover:text-red-400" : "text-gray-400 hover:text-red-500"}`}
                       title="Stop search"
                     >
                       <StopCircle className="w-5 h-5" />
@@ -880,11 +776,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                     <button
                       onClick={handleSearch}
                       disabled={!query.trim()}
-                      className={`p-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
-                        theme === "dark"
-                          ? "text-gray-500 hover:text-gray-200"
-                          : "text-gray-400 hover:text-gray-900"
-                      }`}
+                      className={`p-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${theme === "dark" ? "text-gray-500 hover:text-gray-200" : "text-gray-400 hover:text-gray-900"}`}
                     >
                       <ArrowUp className="w-5 h-5" />
                     </button>
@@ -893,11 +785,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
               </div>
               {error && (
                 <div
-                  className={`absolute -top-10 left-1/2 -translate-x-1/2 px-4 py-2 text-xs rounded-full flex items-center gap-2 shadow-sm ${
-                    theme === "dark"
-                      ? "bg-red-900/20 text-red-400 border border-red-800"
-                      : "bg-red-50 text-red-600 border border-red-200"
-                  }`}
+                  className={`absolute -top-10 left-1/2 -translate-x-1/2 px-4 py-2 text-xs rounded-full flex items-center gap-2 shadow-sm ${theme === "dark" ? "bg-red-900/20 text-red-400 border border-red-800" : "bg-red-50 text-red-600 border border-red-200"}`}
                 >
                   <AlertCircle className="w-3 h-3" /> {error}
                 </div>
