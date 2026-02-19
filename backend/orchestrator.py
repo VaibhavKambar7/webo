@@ -58,6 +58,7 @@ class Orchestrator:
 
             while iteration < self.max_iterations:
                 iteration += 1
+                state.loop_count = iteration 
 
                 action_decision = await self.agent.think(
                     sub_query=state.original_query,
@@ -70,6 +71,7 @@ class Orchestrator:
                 tool_input = action_object.input
 
                 state.confidence_history.append(action_decision.confidence)
+                state.confidence = action_decision.confidence
 
                 current_step = ReActStep(
                     thought=thought,
@@ -85,6 +87,8 @@ class Orchestrator:
                             action=ReActAction(tool="system_feedback", input="retry"),
                             observation="Confidence is too low. Please perform deeper searches.",
                         )
+                        current_step.observation = "Answer rejected: Confidence too low."
+                        state.memory.append(current_step)
                         state.memory.append(feedback_step)
                         continue
 
@@ -136,15 +140,6 @@ class Orchestrator:
                 state.has_new_evidence = bool(results)
                 state.memory.append(current_step)
 
-                await self.job_service.update_job_state(state)
-                yield state
-
-            if iteration >= self.max_iterations:
-                state.loop_count = iteration
-                state.status = "COMPLETED"
-                state.final_answer = (
-                    "Maximum iterations reached. Synthesizing available information."
-                )
                 await self.job_service.update_job_state(state)
                 yield state
 
@@ -246,14 +241,13 @@ class Orchestrator:
             confidence = state.confidence
             loop_count = state.loop_count
 
+            if loop_count >= self.max_iterations:
+                return "FORCE_FINAL_WITH_CAVEATS"
+
             if confidence >= 0.8:
                 return "ACCEPT"
 
-            if confidence < 0.8 and loop_count >= self.max_iterations:
-                return "FORCE_FINAL_WITH_CAVEATS"
-
-            if confidence < 0.8:
-                return "RETRY_SEARCH"
+            return "RETRY_SEARCH"
 
         except Exception:
             print("Error in reflector")

@@ -54,20 +54,22 @@ class AgentService:
         GOAL: Answer this query: "{sub_query}"
         
         AVAILABLE TOOLS:
-        1. web_search(query: str): Search the web for information
+        1. web_search(query: str): Search the web for information.
         
-        2. final_answer(answer: str): Call this when you have SUFFICIENT information to answer. 
-           Put the comprehensive final answer in the 'input' field. Also return confidence score between 0.0 to 1.0,
-           where 0 being less confidence and 1 being more.
+        2. final_answer(answer: str): Call this only when you are certain or have exhausted search options.
+           - 'input': Provide a comprehensive, detailed answer.
+           - 'confidence': 0.0 to 1.0. 
+             * Be honest! If results were contradictory or sparse, use a lower score.
+             * If you provide a final_answer with low confidence, the system may ask you to try again with better queries.
         
         YOUR WORK SO FAR:
         {history if history else "No actions taken yet."}
         
         DECISION RULES:
-        - If you have NO information yet, start with a web search
-        - If search results are insufficient, do MORE targeted searches
-        - If you have enough information to answer, call final_answer
-        - Be efficient: don't search more than necessary
+        - If you see "System Reflection" in your memory, it means your previous attempt was rejected. READ THE FEEDBACK and change your strategy (e.g., use different search terms).
+        - If you have NO information yet, start with a web search.
+        - If search results are insufficient, do MORE targeted searches.
+        - Only call final_answer when you have enough evidence to be confident (>0.8) OR if you've tried many different searches without luck.
         
         Respond with the JSON schema provided.
         """
