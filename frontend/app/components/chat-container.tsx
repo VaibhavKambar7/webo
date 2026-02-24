@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronUp,
   Layers,
+  Telescope,
   ArrowUp,
   StopCircle,
   Moon,
@@ -342,32 +343,32 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
       PENDING: {
         label: "Initializing...",
         icon: Loader,
-        color: "text-gray-400",
+        color: theme === "dark" ? "text-slate-400" : "text-slate-500",
       },
       DECOMPOSING: {
         label: "Breaking down request...",
         icon: Layers,
-        color: theme === "dark" ? "text-gray-400" : "text-gray-500",
+        color: theme === "dark" ? "text-slate-300" : "text-slate-600",
       },
       WORKING: {
         label: "Searching internet...",
         icon: Search,
-        color: theme === "dark" ? "text-gray-300" : "text-gray-600",
+        color: theme === "dark" ? "text-slate-200" : "text-slate-700",
       },
       SYNTHESIZING: {
         label: "Synthesizing answer...",
         icon: Loader,
-        color: theme === "dark" ? "text-gray-300" : "text-gray-700",
+        color: theme === "dark" ? "text-slate-200" : "text-slate-700",
       },
-      COMPLETED: { label: "Completed", icon: null, color: "text-green-600" },
-      FAILED: { label: "Failed", icon: AlertCircle, color: "text-red-600" },
-      STOPPED: { label: "Stopped", icon: StopCircle, color: "text-yellow-600" },
+      COMPLETED: { label: "Completed", icon: null, color: "text-emerald-600" },
+      FAILED: { label: "Failed", icon: AlertCircle, color: "text-rose-600" },
+      STOPPED: { label: "Stopped", icon: StopCircle, color: "text-amber-600" },
     };
 
     const statusInfo = statusMap[status] || {
       label: status,
       icon: Loader,
-      color: "text-gray-400",
+      color: theme === "dark" ? "text-slate-400" : "text-slate-500",
     };
     const Icon = statusInfo.icon;
 
@@ -396,8 +397,8 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
         }
         .markdown-content p {
           margin-bottom: 1.25rem;
-          line-height: 1.75;
-          color: ${theme === "dark" ? "#d1d5db" : "#374151"};
+          line-height: 1.72;
+          color: ${theme === "dark" ? "#dbe4f0" : "#2f3a4a"};
         }
         .markdown-content h1,
         .markdown-content h2,
@@ -406,7 +407,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
           margin-top: 2rem;
           margin-bottom: 1rem;
           font-weight: 600;
-          color: ${theme === "dark" ? "#f9fafb" : "#111827"};
+          color: ${theme === "dark" ? "#f8fbff" : "#162032"};
           line-height: 1.3;
         }
         .markdown-content h1 {
@@ -422,17 +423,17 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
         .markdown-content ol {
           margin-bottom: 1.25rem;
           padding-left: 1.5rem;
-          color: ${theme === "dark" ? "#d1d5db" : "#374151"};
+          color: ${theme === "dark" ? "#dbe4f0" : "#2f3a4a"};
         }
         .markdown-content li {
           margin-bottom: 0.5rem;
           padding-left: 0.25rem;
         }
         .markdown-content li::marker {
-          color: ${theme === "dark" ? "#6b7280" : "#9ca3af"};
+          color: ${theme === "dark" ? "#6d7f99" : "#8a9bb0"};
         }
         .markdown-content a {
-          color: ${theme === "dark" ? "#60a5fa" : "#2563eb"};
+          color: ${theme === "dark" ? "#9cc3ff" : "#1d4ed8"};
           text-decoration: none;
           cursor: pointer;
         }
@@ -440,8 +441,8 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
           text-decoration: underline;
         }
         .markdown-content code {
-          background-color: ${theme === "dark" ? "#374151" : "#f3f4f6"};
-          color: ${theme === "dark" ? "#e5e7eb" : "#1f2937"};
+          background-color: ${theme === "dark" ? "#243043" : "#e8edf5"};
+          color: ${theme === "dark" ? "#f2f6fb" : "#1f2d40"};
           padding: 0.2em 0.4em;
           border-radius: 0.25rem;
           font-size: 0.875em;
@@ -449,7 +450,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
             ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         }
         .markdown-content pre {
-          background-color: #1f2937;
+          background-color: ${theme === "dark" ? "#111927" : "#1c2737"};
           padding: 1rem;
           border-radius: 0.5rem;
           overflow-x: auto;
@@ -462,25 +463,33 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
           font-size: 0.875em;
         }
         .markdown-content blockquote {
-          border-left: 4px solid ${theme === "dark" ? "#4b5563" : "#e5e7eb"};
+          border-left: 4px solid ${theme === "dark" ? "#3b4f6e" : "#c7d4e5"};
           padding-left: 1rem;
           margin-bottom: 1.25rem;
           font-style: italic;
-          color: ${theme === "dark" ? "#9ca3af" : "#6b7280"};
+          color: ${theme === "dark" ? "#b7c5d8" : "#4e6078"};
         }
         .markdown-content strong {
-          color: ${theme === "dark" ? "#f3f4f6" : "#111827"};
+          color: ${theme === "dark" ? "#f8fbff" : "#162032"};
           font-weight: 600;
         }
       `}</style>
 
       <div
-        className={`min-h-screen font-sans ${theme === "dark" ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"}`}
+        className={`min-h-screen font-[family-name:var(--font-sans)] ${
+          theme === "dark"
+            ? "bg-[radial-gradient(circle_at_top,#172235,#0c1422_45%)] text-slate-100"
+            : "bg-[radial-gradient(circle_at_top,#ffffff,#eef2f7_45%)] text-slate-900"
+        }`}
       >
-        <div className="fixed top-4 right-4 z-50">
+        <div className="fixed top-5 right-5 z-50">
           <button
             onClick={toggleTheme}
-            className={`p-2 rounded-lg transition-colors ${theme === "dark" ? "bg-gray-800 hover:bg-gray-700 text-gray-200" : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200"}`}
+            className={`p-2.5 rounded-xl transition-colors border shadow-sm ${
+              theme === "dark"
+                ? "bg-slate-800/90 hover:bg-slate-700/90 text-slate-200 border-slate-700"
+                : "bg-white/95 hover:bg-white text-slate-700 border-slate-200"
+            }`}
           >
             {theme === "dark" ? (
               <Sun className="w-5 h-5 cursor-pointer" />
@@ -490,26 +499,34 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
           </button>
         </div>
 
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
           {messages.length === 0 && !currentChatId ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
-              <div className="w-full max-w-2xl space-y-8">
-                <div className="text-center space-y-2">
+              <div className="w-full max-w-3xl space-y-8">
+                <div className="text-center space-y-3">
                   <h2
-                    className={`text-3xl font-semibold tracking-tight ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}
+                    className={`text-4xl font-semibold tracking-tight ${
+                      theme === "dark" ? "text-slate-50" : "text-slate-900"
+                    }`}
                   >
                     WEBO
                   </h2>
                   <p
-                    className={`text-lg ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                    className={`text-lg ${
+                      theme === "dark" ? "text-slate-300" : "text-slate-600"
+                    }`}
                   >
-                    Ask complex questions. Get comprehensive answers.
+                    Analyze topics quickly with traceable sources and focused summaries.
                   </p>
                 </div>
 
                 <div className="relative">
                   <div
-                    className={`relative rounded-xl shadow-sm focus-within:ring-1 transition-all duration-200 ${theme === "dark" ? "bg-gray-800 border border-gray-700 focus-within:border-gray-600 focus-within:ring-gray-600" : "bg-white border border-gray-200 focus-within:border-gray-400 focus-within:ring-gray-400"}`}
+                    className={`relative rounded-2xl shadow-lg focus-within:ring-2 transition-all duration-200 ${
+                      theme === "dark"
+                        ? "bg-slate-900/85 border border-slate-700 focus-within:border-sky-700 focus-within:ring-sky-900/60"
+                        : "bg-white/95 border border-slate-200 focus-within:border-sky-300 focus-within:ring-sky-100"
+                    }`}
                   >
                     <textarea
                       ref={textareaRef}
@@ -523,26 +540,42 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                         }
                       }}
                       rows={1}
-                      className={`w-full px-5 py-4 text-base bg-transparent focus:outline-none rounded-xl resize-none overflow-hidden min-h-[56px] leading-relaxed ${theme === "dark" ? "text-gray-100 placeholder-gray-500" : "text-gray-900 placeholder-gray-400"}`}
+                      className={`w-full px-5 py-4 pr-24 text-[15px] bg-transparent focus:outline-none rounded-2xl resize-none overflow-hidden min-h-[60px] leading-relaxed ${
+                        theme === "dark"
+                          ? "text-slate-100 placeholder-slate-500"
+                          : "text-slate-900 placeholder-slate-400"
+                      }`}
                       disabled={loading}
                     />
-                    <div className="absolute right-2 bottom-2 flex items-center gap-2">
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                       <button
                         onClick={() => setIsAgentic(!isAgentic)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-xs font-medium cursor-pointer ${isAgentic ? "bg-blue-600/10 text-blue-500 border border-blue-500/20" : theme === "dark" ? "text-gray-500 hover:text-gray-400" : "text-gray-400 hover:text-gray-500"}`}
+                        className={`h-9 w-9 rounded-full transition-all cursor-pointer border inline-flex items-center justify-center ${
+                          isAgentic
+                            ? "bg-sky-500/10 text-sky-500 border-sky-500/30"
+                            : theme === "dark"
+                              ? "text-slate-400 border-slate-700 hover:text-slate-300"
+                              : "text-slate-500 border-slate-200 hover:text-slate-700"
+                        }`}
                         title="Deep Research uses an agentic workflow"
+                        aria-label="Toggle deep research"
                       >
-                        <Layers
-                          className={`w-3.5 h-3.5 ${isAgentic ? "animate-pulse" : ""}`}
+                        <Telescope
+                          className={`w-4 h-4 ${isAgentic ? "animate-pulse" : ""}`}
                         />
-                        <span>Deep Research</span>
                       </button>
                       <button
                         onClick={handleSearch}
                         disabled={!query.trim() || loading}
-                        className={`p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${theme === "dark" ? "bg-gray-700 text-white hover:bg-gray-600" : "bg-gray-900 text-white hover:bg-gray-700"}`}
+                        className={`h-9 w-9 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer inline-flex items-center justify-center ${
+                          theme === "dark"
+                            ? "bg-slate-700 text-white hover:bg-slate-600"
+                            : "bg-slate-900 text-white hover:bg-slate-800"
+                        }`}
+                        title="Send"
+                        aria-label="Send message"
                       >
-                        <ArrowUp className="w-5 h-5" />
+                        <ArrowUp className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -550,7 +583,11 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
 
                 {error && (
                   <div
-                    className={`p-3 rounded-lg flex items-center gap-3 text-sm ${theme === "dark" ? "bg-red-900/20 border border-red-800 text-red-400" : "bg-red-50 border border-red-200 text-red-600"}`}
+                    className={`p-3 rounded-lg flex items-center gap-3 text-sm ${
+                      theme === "dark"
+                        ? "bg-rose-900/20 border border-rose-800 text-rose-300"
+                        : "bg-rose-50 border border-rose-200 text-rose-700"
+                    }`}
                   >
                     <AlertCircle className="w-4 h-4 flex-shrink-0" />
                     <span>{error}</span>
@@ -559,13 +596,17 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
               </div>
             </div>
           ) : (
-            <div className="pb-40 space-y-10">
+            <div className="pb-44 space-y-10">
               {messages.map((message) => (
                 <div key={message.id} className="fade-in">
                   {message.role === "user" && (
-                    <div className="flex justify-end mb-4">
+                    <div className="flex justify-end mb-5">
                       <div
-                        className={`text-xl font-medium leading-relaxed max-w-[90%] ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}
+                        className={`max-w-[88%] rounded-2xl px-4 py-3 text-lg font-medium leading-relaxed border ${
+                          theme === "dark"
+                            ? "bg-slate-800/80 text-slate-100 border-slate-700"
+                            : "bg-white text-slate-900 border-slate-200"
+                        }`}
                       >
                         {message.content}
                       </div>
@@ -574,7 +615,13 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
 
                   {message.role === "assistant" && (
                     <div className="flex gap-6">
-                      <div className="flex-1 min-w-0 space-y-4">
+                      <div
+                        className={`flex-1 min-w-0 space-y-4 rounded-2xl p-5 border ${
+                          theme === "dark"
+                            ? "bg-slate-900/60 border-slate-800"
+                            : "bg-white/95 border-slate-200"
+                        }`}
+                      >
                         <div>
                           {loading &&
                             message.status &&
@@ -586,14 +633,26 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                             (message.sources &&
                               message.sources.length > 0)) && (
                             <div
-                              className={`rounded-lg overflow-hidden shadow-sm mb-6 ${theme === "dark" ? "border border-gray-700 bg-gray-800" : "border border-gray-200 bg-white"}`}
+                              className={`rounded-xl overflow-hidden shadow-sm mb-6 ${
+                                theme === "dark"
+                                  ? "border border-slate-700 bg-slate-800/70"
+                                  : "border border-slate-200 bg-slate-50/70"
+                              }`}
                             >
                               <button
                                 onClick={() => toggleExpansion(message.id)}
-                                className={`w-full flex items-center justify-between px-4 py-2.5 transition-colors cursor-pointer ${theme === "dark" ? "bg-gray-800/50 hover:bg-gray-700/50 border-b border-gray-700" : "bg-gray-50 hover:bg-gray-100 border-b border-gray-100"}`}
+                                className={`w-full flex items-center justify-between px-4 py-3 transition-colors cursor-pointer ${
+                                  theme === "dark"
+                                    ? "bg-slate-800/70 hover:bg-slate-700/70 border-b border-slate-700"
+                                    : "bg-slate-100/70 hover:bg-slate-100 border-b border-slate-200"
+                                }`}
                               >
                                 <div
-                                  className={`flex items-center gap-2 text-xs font-medium uppercase tracking-wide ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                                  className={`flex items-center gap-2 text-xs font-medium uppercase tracking-wide ${
+                                    theme === "dark"
+                                      ? "text-slate-300"
+                                      : "text-slate-600"
+                                  }`}
                                 >
                                   <Layers className="w-3.5 h-3.5" />
                                   <span>
@@ -613,15 +672,23 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                 )}
                               </button>
 
-                              {message.isExpanded && (
-                                <div
-                                  className={`p-4 space-y-6 ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
-                                >
-                                  {message.subQueries &&
-                                    message.subQueries.length > 0 && (
+                                {message.isExpanded && (
+                                  <div
+                                    className={`p-4 space-y-6 ${
+                                      theme === "dark"
+                                        ? "bg-slate-800/60"
+                                        : "bg-white"
+                                    }`}
+                                  >
+                                    {message.subQueries &&
+                                      message.subQueries.length > 0 && (
                                       <div className="space-y-2">
                                         <div
-                                          className={`text-xs font-semibold uppercase ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}
+                                          className={`text-xs font-semibold uppercase ${
+                                            theme === "dark"
+                                              ? "text-slate-400"
+                                              : "text-slate-500"
+                                          }`}
                                         >
                                           Research Steps
                                         </div>
@@ -630,10 +697,18 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                             (subQuery, idx) => (
                                               <div
                                                 key={idx}
-                                                className={`flex items-start gap-2.5 text-sm ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}
+                                                className={`flex items-start gap-2.5 text-sm ${
+                                                  theme === "dark"
+                                                    ? "text-slate-200"
+                                                    : "text-slate-700"
+                                                }`}
                                               >
                                                 <div
-                                                  className={`mt-0.5 ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}
+                                                  className={`mt-0.5 ${
+                                                    theme === "dark"
+                                                      ? "text-slate-500"
+                                                      : "text-slate-400"
+                                                  }`}
                                                 >
                                                   <Search className="w-3.5 h-3.5" />
                                                 </div>
@@ -649,7 +724,11 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                     message.sources.length > 0 && (
                                       <div className="space-y-2">
                                         <div
-                                          className={`text-xs font-semibold uppercase ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}
+                                          className={`text-xs font-semibold uppercase ${
+                                            theme === "dark"
+                                              ? "text-slate-400"
+                                              : "text-slate-500"
+                                          }`}
                                         >
                                           References
                                         </div>
@@ -665,7 +744,11 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                                   href={source.url}
                                                   target="_blank"
                                                   rel="noopener noreferrer"
-                                                  className={`flex items-center gap-3 p-2.5 rounded-lg transition-all group cursor-pointer ${theme === "dark" ? "bg-gray-800/50 border border-gray-700 hover:border-gray-600 hover:bg-gray-700/50" : "bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}
+                                                  className={`flex items-center gap-3 p-2.5 rounded-lg transition-all group cursor-pointer ${
+                                                    theme === "dark"
+                                                      ? "bg-slate-800/70 border border-slate-700 hover:border-slate-600 hover:bg-slate-700/60"
+                                                      : "bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                                                  }`}
                                                 >
                                                   <div className="flex-shrink-0 w-4 h-4 rounded-sm overflow-hidden opacity-70">
                                                     <img
@@ -684,11 +767,21 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                                   </div>
                                                   <div className="flex-1 min-w-0">
                                                     <div
-                                                      className={`text-sm font-medium truncate transition-colors ${theme === "dark" ? "text-gray-200 group-hover:text-blue-400" : "text-gray-800 group-hover:text-blue-600"}`}
+                                                      className={`text-sm font-medium truncate transition-colors ${
+                                                        theme === "dark"
+                                                          ? "text-slate-200 group-hover:text-sky-300"
+                                                          : "text-slate-800 group-hover:text-sky-700"
+                                                      }`}
                                                     >
                                                       {source.title || hostname}
                                                     </div>
-                                                    <div className="text-xs truncate text-gray-500">
+                                                    <div
+                                                      className={`text-xs truncate ${
+                                                        theme === "dark"
+                                                          ? "text-slate-400"
+                                                          : "text-slate-500"
+                                                      }`}
+                                                    >
                                                       {hostname}
                                                     </div>
                                                   </div>
@@ -731,11 +824,19 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
 
         {(messages.length > 0 || currentChatId) && (
           <div
-            className={`fixed bottom-0 left-0 right-0 z-20 ${theme === "dark" ? "bg-gray-900 border-t border-gray-800" : "bg-gray-50 border-t border-gray-200"}`}
+            className={`fixed bottom-0 left-0 right-0 z-20 backdrop-blur-md ${
+              theme === "dark"
+                ? "bg-slate-950/80 border-t border-slate-800"
+                : "bg-white/85 border-t border-slate-200"
+            }`}
           >
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
               <div
-                className={`relative rounded-xl shadow-sm flex items-end transition-colors ${theme === "dark" ? "bg-gray-800 border border-gray-700 focus-within:border-gray-600" : "bg-white border border-gray-200 focus-within:border-gray-400"}`}
+                className={`relative rounded-2xl shadow-lg flex items-end transition-colors ${
+                  theme === "dark"
+                    ? "bg-slate-900/95 border border-slate-700 focus-within:border-sky-700"
+                    : "bg-white border border-slate-200 focus-within:border-sky-300"
+                }`}
               >
                 <textarea
                   ref={textareaRef}
@@ -749,43 +850,69 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                     }
                   }}
                   rows={1}
-                  className={`flex-1 px-4 py-3 text-base bg-transparent focus:outline-none resize-none overflow-hidden min-h-[48px] leading-relaxed ${theme === "dark" ? "text-gray-100 placeholder-gray-500" : "text-gray-900 placeholder-gray-400"}`}
+                  className={`w-full px-4 py-3 pr-24 text-[15px] bg-transparent focus:outline-none resize-none overflow-hidden min-h-[56px] leading-relaxed ${
+                    theme === "dark"
+                      ? "text-slate-100 placeholder-slate-500"
+                      : "text-slate-900 placeholder-slate-400"
+                  }`}
                   disabled={loading}
                 />
-                <div className="pr-2 pb-2 flex items-center gap-2">
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                   {!loading && (
                     <button
                       onClick={() => setIsAgentic(!isAgentic)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-xs font-medium cursor-pointer ${isAgentic ? "bg-blue-600/10 text-blue-500 border border-blue-500/20" : theme === "dark" ? "text-gray-500 hover:text-gray-400" : "text-gray-400 hover:text-gray-500"}`}
+                      className={`h-9 w-9 rounded-full transition-all cursor-pointer border inline-flex items-center justify-center ${
+                        isAgentic
+                          ? "bg-sky-500/10 text-sky-500 border-sky-500/30"
+                          : theme === "dark"
+                            ? "text-slate-400 border-slate-700 hover:text-slate-300"
+                            : "text-slate-500 border-slate-200 hover:text-slate-700"
+                      }`}
+                      title="Deep Research uses an agentic workflow"
+                      aria-label="Toggle deep research"
                     >
-                      <Layers
-                        className={`w-3.5 h-3.5 ${isAgentic ? "animate-pulse" : ""}`}
+                      <Telescope
+                        className={`w-4 h-4 ${isAgentic ? "animate-pulse" : ""}`}
                       />
-                      <span>Deep Research</span>
                     </button>
                   )}
                   {loading ? (
                     <button
                       onClick={stopSearch}
-                      className={`p-2 transition-colors cursor-pointer ${theme === "dark" ? "text-gray-500 hover:text-red-400" : "text-gray-400 hover:text-red-500"}`}
+                      className={`h-9 w-9 rounded-full transition-colors cursor-pointer inline-flex items-center justify-center ${
+                        theme === "dark"
+                          ? "bg-rose-900/30 text-rose-200 hover:bg-rose-900/45"
+                          : "bg-rose-50 text-rose-700 hover:bg-rose-100"
+                      }`}
                       title="Stop search"
+                      aria-label="Stop search"
                     >
-                      <StopCircle className="w-5 h-5" />
+                      <StopCircle className="w-4 h-4" />
                     </button>
                   ) : (
                     <button
                       onClick={handleSearch}
                       disabled={!query.trim()}
-                      className={`p-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${theme === "dark" ? "text-gray-500 hover:text-gray-200" : "text-gray-400 hover:text-gray-900"}`}
+                      className={`h-9 w-9 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer inline-flex items-center justify-center ${
+                        theme === "dark"
+                          ? "bg-slate-700 text-slate-100 hover:bg-slate-600"
+                          : "bg-slate-900 text-slate-100 hover:bg-slate-800"
+                      }`}
+                      title="Send"
+                      aria-label="Send message"
                     >
-                      <ArrowUp className="w-5 h-5" />
+                      <ArrowUp className="w-4 h-4" />
                     </button>
                   )}
                 </div>
               </div>
               {error && (
                 <div
-                  className={`absolute -top-10 left-1/2 -translate-x-1/2 px-4 py-2 text-xs rounded-full flex items-center gap-2 shadow-sm ${theme === "dark" ? "bg-red-900/20 text-red-400 border border-red-800" : "bg-red-50 text-red-600 border border-red-200"}`}
+                  className={`absolute -top-10 left-1/2 -translate-x-1/2 px-4 py-2 text-xs rounded-full flex items-center gap-2 shadow-sm ${
+                    theme === "dark"
+                      ? "bg-rose-900/20 text-rose-300 border border-rose-800"
+                      : "bg-rose-50 text-rose-700 border border-rose-200"
+                  }`}
                 >
                   <AlertCircle className="w-3 h-3" /> {error}
                 </div>
