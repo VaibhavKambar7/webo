@@ -66,7 +66,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
   const [query, setQuery] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [isAgentic, setIsAgentic] = useState<boolean>(false);
 
   const [currentChatId, setCurrentChatId] = useState<string | undefined>(
