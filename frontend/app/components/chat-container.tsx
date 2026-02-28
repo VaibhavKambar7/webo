@@ -343,22 +343,22 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
       PENDING: {
         label: "Initializing...",
         icon: Loader,
-        color: theme === "dark" ? "text-slate-400" : "text-slate-500",
+        color: theme === "dark" ? "text-neutral-400" : "text-slate-500",
       },
       DECOMPOSING: {
         label: "Breaking down request...",
         icon: Layers,
-        color: theme === "dark" ? "text-slate-300" : "text-slate-600",
+        color: theme === "dark" ? "text-neutral-300" : "text-slate-600",
       },
       WORKING: {
         label: "Searching internet...",
         icon: Search,
-        color: theme === "dark" ? "text-slate-200" : "text-slate-700",
+        color: theme === "dark" ? "text-neutral-200" : "text-slate-700",
       },
       SYNTHESIZING: {
         label: "Synthesizing answer...",
         icon: Loader,
-        color: theme === "dark" ? "text-slate-200" : "text-slate-700",
+        color: theme === "dark" ? "text-neutral-200" : "text-slate-700",
       },
       COMPLETED: { label: "Completed", icon: null, color: "text-emerald-600" },
       FAILED: { label: "Failed", icon: AlertCircle, color: "text-rose-600" },
@@ -368,7 +368,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
     const statusInfo = statusMap[status] || {
       label: status,
       icon: Loader,
-      color: theme === "dark" ? "text-slate-400" : "text-slate-500",
+      color: theme === "dark" ? "text-neutral-400" : "text-slate-500",
     };
     const Icon = statusInfo.icon;
 
@@ -398,7 +398,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
         .markdown-content p {
           margin-bottom: 1.25rem;
           line-height: 1.72;
-          color: ${theme === "dark" ? "#dbe4f0" : "#2f3a4a"};
+          color: ${theme === "dark" ? "#ececec" : "#2f3a4a"};
         }
         .markdown-content h1,
         .markdown-content h2,
@@ -407,7 +407,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
           margin-top: 2rem;
           margin-bottom: 1rem;
           font-weight: 600;
-          color: ${theme === "dark" ? "#f8fbff" : "#162032"};
+          color: ${theme === "dark" ? "#ffffff" : "#162032"};
           line-height: 1.3;
         }
         .markdown-content h1 {
@@ -423,17 +423,17 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
         .markdown-content ol {
           margin-bottom: 1.25rem;
           padding-left: 1.5rem;
-          color: ${theme === "dark" ? "#dbe4f0" : "#2f3a4a"};
+          color: ${theme === "dark" ? "#ececec" : "#2f3a4a"};
         }
         .markdown-content li {
           margin-bottom: 0.5rem;
           padding-left: 0.25rem;
         }
         .markdown-content li::marker {
-          color: ${theme === "dark" ? "#6d7f99" : "#8a9bb0"};
+          color: ${theme === "dark" ? "#666666" : "#8a9bb0"};
         }
         .markdown-content a {
-          color: ${theme === "dark" ? "#9cc3ff" : "#1d4ed8"};
+          color: ${theme === "dark" ? "#a0a0a0" : "#374151"};
           text-decoration: none;
           cursor: pointer;
         }
@@ -441,8 +441,8 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
           text-decoration: underline;
         }
         .markdown-content code {
-          background-color: ${theme === "dark" ? "#243043" : "#e8edf5"};
-          color: ${theme === "dark" ? "#f2f6fb" : "#1f2d40"};
+          background-color: ${theme === "dark" ? "#2f2f2f" : "#e8edf5"};
+          color: ${theme === "dark" ? "#ffffff" : "#1f2d40"};
           padding: 0.2em 0.4em;
           border-radius: 0.25rem;
           font-size: 0.875em;
@@ -450,7 +450,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
             ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         }
         .markdown-content pre {
-          background-color: ${theme === "dark" ? "#111927" : "#1c2737"};
+          background-color: ${theme === "dark" ? "#0d0d0d" : "#262626"};
           padding: 1rem;
           border-radius: 0.5rem;
           overflow-x: auto;
@@ -458,19 +458,19 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
         }
         .markdown-content pre code {
           background-color: transparent;
-          color: #f3f4f6;
+          color: #e5e5e5;
           padding: 0;
           font-size: 0.875em;
         }
         .markdown-content blockquote {
-          border-left: 4px solid ${theme === "dark" ? "#3b4f6e" : "#c7d4e5"};
+          border-left: 4px solid ${theme === "dark" ? "#676767" : "#c7d4e5"};
           padding-left: 1rem;
           margin-bottom: 1.25rem;
           font-style: italic;
-          color: ${theme === "dark" ? "#b7c5d8" : "#4e6078"};
+          color: ${theme === "dark" ? "#a0a0a0" : "#4e6078"};
         }
         .markdown-content strong {
-          color: ${theme === "dark" ? "#f8fbff" : "#162032"};
+          color: ${theme === "dark" ? "#ffffff" : "#162032"};
           font-weight: 600;
         }
       `}</style>
@@ -478,7 +478,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
       <div
         className={`min-h-screen font-[family-name:var(--font-sans)] ${
           theme === "dark"
-            ? "bg-[radial-gradient(circle_at_top,#172235,#0c1422_45%)] text-slate-100"
+            ? "bg-[#212121] text-[#ececec]"
             : "bg-[radial-gradient(circle_at_top,#ffffff,#eef2f7_45%)] text-slate-900"
         }`}
       >
@@ -487,7 +487,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
             onClick={toggleTheme}
             className={`p-2.5 rounded-xl transition-colors border shadow-sm ${
               theme === "dark"
-                ? "bg-slate-800/90 hover:bg-slate-700/90 text-slate-200 border-slate-700"
+                ? "bg-[#2f2f2f] hover:bg-[#3a3a3a] text-[#ececec] border-[#424242]"
                 : "bg-white/95 hover:bg-white text-slate-700 border-slate-200"
             }`}
           >
@@ -506,14 +506,14 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                 <div className="text-center space-y-3">
                   <h2
                     className={`text-4xl font-semibold tracking-tight ${
-                      theme === "dark" ? "text-slate-50" : "text-slate-900"
+                      theme === "dark" ? "text-[#ececec]" : "text-slate-900"
                     }`}
                   >
                     WEBO
                   </h2>
                   <p
                     className={`text-lg ${
-                      theme === "dark" ? "text-slate-300" : "text-slate-600"
+                      theme === "dark" ? "text-[#a0a0a0]" : "text-slate-600"
                     }`}
                   >
                     Analyze topics quickly with traceable sources and focused summaries.
@@ -524,8 +524,8 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                   <div
                     className={`relative rounded-2xl shadow-lg focus-within:ring-2 transition-all duration-200 ${
                       theme === "dark"
-                        ? "bg-slate-900/85 border border-slate-700 focus-within:border-sky-700 focus-within:ring-sky-900/60"
-                        : "bg-white/95 border border-slate-200 focus-within:border-sky-300 focus-within:ring-sky-100"
+                        ? "bg-[#2f2f2f] border border-[#424242] focus-within:border-[#555555] focus-within:ring-[#3a3a3a]/40"
+                        : "bg-white/95 border border-slate-200 focus-within:border-slate-400 focus-within:ring-slate-100"
                     }`}
                   >
                     <textarea
@@ -542,7 +542,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                       rows={1}
                       className={`w-full px-5 py-4 pr-24 text-[15px] bg-transparent focus:outline-none rounded-2xl resize-none overflow-hidden min-h-[60px] leading-relaxed ${
                         theme === "dark"
-                          ? "text-slate-100 placeholder-slate-500"
+                          ? "text-[#ececec] placeholder-[#666666]"
                           : "text-slate-900 placeholder-slate-400"
                       }`}
                       disabled={loading}
@@ -552,9 +552,9 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                         onClick={() => setIsAgentic(!isAgentic)}
                         className={`h-9 w-9 rounded-full transition-all cursor-pointer border inline-flex items-center justify-center ${
                           isAgentic
-                            ? "bg-sky-500/10 text-sky-500 border-sky-500/30"
+                            ? "bg-[#2f2f2f] text-emerald-400 border-emerald-500/30"
                             : theme === "dark"
-                              ? "text-slate-400 border-slate-700 hover:text-slate-300"
+                              ? "text-[#888888] border-[#424242] hover:text-[#aaaaaa]"
                               : "text-slate-500 border-slate-200 hover:text-slate-700"
                         }`}
                         title="Deep Research uses an agentic workflow"
@@ -569,7 +569,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                         disabled={!query.trim() || loading}
                         className={`h-9 w-9 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer inline-flex items-center justify-center ${
                           theme === "dark"
-                            ? "bg-slate-700 text-white hover:bg-slate-600"
+                            ? "bg-[#424242] text-white hover:bg-[#4f4f4f]"
                             : "bg-slate-900 text-white hover:bg-slate-800"
                         }`}
                         title="Send"
@@ -602,10 +602,10 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                   {message.role === "user" && (
                     <div className="flex justify-end mb-5">
                       <div
-                        className={`max-w-[88%] rounded-2xl px-4 py-3 text-lg font-medium leading-relaxed border ${
+                        className={`max-w-[88%] rounded-2xl px-4 py-3 text-lg font-medium leading-relaxed ${
                           theme === "dark"
-                            ? "bg-slate-800/80 text-slate-100 border-slate-700"
-                            : "bg-white text-slate-900 border-slate-200"
+                            ? "bg-[#2f2f2f] text-[#ececec]"
+                            : "bg-white text-slate-900 border border-slate-200"
                         }`}
                       >
                         {message.content}
@@ -616,10 +616,10 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                   {message.role === "assistant" && (
                     <div className="flex gap-6">
                       <div
-                        className={`flex-1 min-w-0 space-y-4 rounded-2xl p-5 border ${
+                        className={`flex-1 min-w-0 space-y-4 rounded-2xl p-5 ${
                           theme === "dark"
-                            ? "bg-slate-900/60 border-slate-800"
-                            : "bg-white/95 border-slate-200"
+                            ? "bg-transparent"
+                            : "bg-white/95 border border-slate-200"
                         }`}
                       >
                         <div>
@@ -633,9 +633,9 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                             (message.sources &&
                               message.sources.length > 0)) && (
                             <div
-                              className={`rounded-xl overflow-hidden shadow-sm mb-6 ${
+                            className={`rounded-xl overflow-hidden shadow-sm mb-6 ${
                                 theme === "dark"
-                                  ? "border border-slate-700 bg-slate-800/70"
+                                  ? "border border-[#424242] bg-[#2a2a2a]"
                                   : "border border-slate-200 bg-slate-50/70"
                               }`}
                             >
@@ -643,14 +643,14 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                 onClick={() => toggleExpansion(message.id)}
                                 className={`w-full flex items-center justify-between px-4 py-3 transition-colors cursor-pointer ${
                                   theme === "dark"
-                                    ? "bg-slate-800/70 hover:bg-slate-700/70 border-b border-slate-700"
+                                    ? "bg-[#2a2a2a] hover:bg-[#333333] border-b border-[#424242]"
                                     : "bg-slate-100/70 hover:bg-slate-100 border-b border-slate-200"
                                 }`}
                               >
                                 <div
                                   className={`flex items-center gap-2 text-xs font-medium uppercase tracking-wide ${
                                     theme === "dark"
-                                      ? "text-slate-300"
+                                      ? "text-[#888888]"
                                       : "text-slate-600"
                                   }`}
                                 >
@@ -663,11 +663,11 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                 </div>
                                 {message.isExpanded ? (
                                   <ChevronUp
-                                    className={`w-4 h-4 ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}
+                                    className={`w-4 h-4 ${theme === "dark" ? "text-[#666666]" : "text-gray-400"}`}
                                   />
                                 ) : (
                                   <ChevronDown
-                                    className={`w-4 h-4 ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}
+                                    className={`w-4 h-4 ${theme === "dark" ? "text-[#666666]" : "text-gray-400"}`}
                                   />
                                 )}
                               </button>
@@ -676,7 +676,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                   <div
                                     className={`p-4 space-y-6 ${
                                       theme === "dark"
-                                        ? "bg-slate-800/60"
+                                        ? "bg-[#262626]"
                                         : "bg-white"
                                     }`}
                                   >
@@ -686,7 +686,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                         <div
                                           className={`text-xs font-semibold uppercase ${
                                             theme === "dark"
-                                              ? "text-slate-400"
+                                              ? "text-[#888888]"
                                               : "text-slate-500"
                                           }`}
                                         >
@@ -699,14 +699,14 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                                 key={idx}
                                                 className={`flex items-start gap-2.5 text-sm ${
                                                   theme === "dark"
-                                                    ? "text-slate-200"
+                                                    ? "text-[#cccccc]"
                                                     : "text-slate-700"
                                                 }`}
                                               >
                                                 <div
                                                   className={`mt-0.5 ${
                                                     theme === "dark"
-                                                      ? "text-slate-500"
+                                                      ? "text-[#666666]"
                                                       : "text-slate-400"
                                                   }`}
                                                 >
@@ -726,7 +726,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                         <div
                                           className={`text-xs font-semibold uppercase ${
                                             theme === "dark"
-                                              ? "text-slate-400"
+                                              ? "text-[#888888]"
                                               : "text-slate-500"
                                           }`}
                                         >
@@ -746,7 +746,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                                   rel="noopener noreferrer"
                                                   className={`flex items-center gap-3 p-2.5 rounded-lg transition-all group cursor-pointer ${
                                                     theme === "dark"
-                                                      ? "bg-slate-800/70 border border-slate-700 hover:border-slate-600 hover:bg-slate-700/60"
+                                                      ? "bg-[#2f2f2f] border border-[#424242] hover:border-[#555555] hover:bg-[#383838]"
                                                       : "bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50"
                                                   }`}
                                                 >
@@ -769,8 +769,8 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                                     <div
                                                       className={`text-sm font-medium truncate transition-colors ${
                                                         theme === "dark"
-                                                          ? "text-slate-200 group-hover:text-sky-300"
-                                                          : "text-slate-800 group-hover:text-sky-700"
+                                                          ? "text-[#cccccc] group-hover:text-[#ececec]"
+                                                          : "text-slate-800 group-hover:text-slate-700"
                                                       }`}
                                                     >
                                                       {source.title || hostname}
@@ -778,7 +778,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                                                     <div
                                                       className={`text-xs truncate ${
                                                         theme === "dark"
-                                                          ? "text-slate-400"
+                                                          ? "text-[#888888]"
                                                           : "text-slate-500"
                                                       }`}
                                                     >
@@ -806,7 +806,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                             message.status !== "COMPLETED" && (
                               <div className="flex flex-col gap-2 animate-pulse mt-2">
                                 <div
-                                  className={`h-2 rounded w-1/3 ${theme === "dark" ? "bg-gray-700" : "bg-gray-200"}`}
+                                  className={`h-2 rounded w-1/3 ${theme === "dark" ? "bg-[#444444]" : "bg-gray-200"}`}
                                 ></div>
                               </div>
                             )
@@ -826,7 +826,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
           <div
             className={`fixed bottom-0 left-0 right-0 z-20 backdrop-blur-md ${
               theme === "dark"
-                ? "bg-slate-950/80 border-t border-slate-800"
+                ? "bg-[#212121]"
                 : "bg-white/85 border-t border-slate-200"
             }`}
           >
@@ -834,8 +834,8 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
               <div
                 className={`relative rounded-2xl shadow-lg flex items-end transition-colors ${
                   theme === "dark"
-                    ? "bg-slate-900/95 border border-slate-700 focus-within:border-sky-700"
-                    : "bg-white border border-slate-200 focus-within:border-sky-300"
+                    ? "bg-[#2f2f2f] border border-[#424242] focus-within:border-[#555555]"
+                    : "bg-white border border-slate-200 focus-within:border-slate-400"
                 }`}
               >
                 <textarea
@@ -852,7 +852,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                   rows={1}
                   className={`w-full px-4 py-3 pr-24 text-[15px] bg-transparent focus:outline-none resize-none overflow-hidden min-h-[56px] leading-relaxed ${
                     theme === "dark"
-                      ? "text-slate-100 placeholder-slate-500"
+                      ? "text-[#ececec] placeholder-[#666666]"
                       : "text-slate-900 placeholder-slate-400"
                   }`}
                   disabled={loading}
@@ -863,9 +863,9 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                       onClick={() => setIsAgentic(!isAgentic)}
                       className={`h-9 w-9 rounded-full transition-all cursor-pointer border inline-flex items-center justify-center ${
                         isAgentic
-                          ? "bg-sky-500/10 text-sky-500 border-sky-500/30"
+                          ? "bg-[#2f2f2f] text-emerald-400 border-emerald-500/30"
                           : theme === "dark"
-                            ? "text-slate-400 border-slate-700 hover:text-slate-300"
+                            ? "text-[#888888] border-[#424242] hover:text-[#aaaaaa]"
                             : "text-slate-500 border-slate-200 hover:text-slate-700"
                       }`}
                       title="Deep Research uses an agentic workflow"
@@ -895,7 +895,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
                       disabled={!query.trim()}
                       className={`h-9 w-9 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer inline-flex items-center justify-center ${
                         theme === "dark"
-                          ? "bg-slate-700 text-slate-100 hover:bg-slate-600"
+                          ? "bg-[#424242] text-white hover:bg-[#4f4f4f]"
                           : "bg-slate-900 text-slate-100 hover:bg-slate-800"
                       }`}
                       title="Send"

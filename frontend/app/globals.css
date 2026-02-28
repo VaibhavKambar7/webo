@@ -14,8 +14,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0f1722;
-    --foreground: #e5ebf3;
+    --background: #212121;
+    --foreground: #ececec;
   }
 }
 
@@ -26,19 +26,24 @@ body {
 }
 
 .prose-custom h1 {
-  @apply text-xl font-bold mb-3 mt-4 text-gray-900;
+  @apply text-xl font-bold mb-3 mt-4;
+  color: var(--foreground);
 }
 
 .prose-custom h2 {
-  @apply text-lg font-bold mb-2 mt-3 text-gray-900;
+  @apply text-lg font-bold mb-2 mt-3;
+  color: var(--foreground);
 }
 
 .prose-custom h3 {
-  @apply text-base font-semibold mb-1 mt-2 text-gray-800;
+  @apply text-base font-semibold mb-1 mt-2;
+  color: var(--foreground);
 }
 
 .prose-custom p {
-  @apply mb-2 text-gray-700 leading-snug;
+  @apply mb-2 leading-snug;
+  color: var(--foreground);
+  opacity: 0.85;
 }
 
 .prose-custom ul {
@@ -50,23 +55,34 @@ body {
 }
 
 .prose-custom li {
-  @apply text-gray-700 leading-snug;
+  @apply leading-snug;
+  color: var(--foreground);
+  opacity: 0.85;
 }
 
 .prose-custom strong {
-  @apply font-semibold text-gray-900;
+  @apply font-semibold;
+  color: var(--foreground);
 }
 
 .prose-custom em {
-  @apply italic text-gray-600;
+  @apply italic;
+  color: var(--foreground);
+  opacity: 0.7;
 }
 
 .prose-custom code {
-  @apply bg-gray-100 px-1 py-0.5 rounded text-xs font-mono text-gray-800;
+  @apply px-1 py-0.5 rounded text-xs font-mono;
+  background-color: var(--background);
+  opacity: 0.8;
 }
 
 .prose-custom blockquote {
-  @apply border-l-4 border-blue-500 pl-3 py-1 bg-gray-50 my-3;
+  @apply border-l-4 pl-3 py-1 my-3;
+  border-color: var(--foreground);
+  opacity: 0.6;
+  background-color: var(--background);
+  opacity: 0.5;
 }
 
 /* For better spacing */
@@ -80,7 +96,9 @@ body {
 }
 
 .prose-custom a {
-  @apply text-blue-600 hover:text-blue-800 underline decoration-1 underline-offset-2;
+  @apply underline decoration-1 underline-offset-2;
+  color: var(--foreground);
+  opacity: 0.8;
   transition: color 0.2s ease;
 }
 
@@ -104,25 +122,25 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(15, 23, 42, 0.3);
   border-radius: 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: linear-gradient(
     180deg,
-    rgba(99, 102, 241, 0.6),
-    rgba(168, 85, 247, 0.6)
+    rgba(100, 100, 100, 0.6),
+    rgba(80, 80, 80, 0.6)
   );
   border-radius: 8px;
-  border: 2px solid rgba(15, 23, 42, 0.5);
+  border: 2px solid rgba(15, 23, 42, 0.3);
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(
     180deg,
-    rgba(99, 102, 241, 0.8),
-    rgba(168, 85, 247, 0.8)
+    rgba(120, 120, 120, 0.8),
+    rgba(100, 100, 100, 0.8)
   );
 }
 
@@ -150,10 +168,10 @@ body {
 @keyframes pulse-glow {
   0%,
   100% {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 20px rgba(100, 100, 100, 0.3);
   }
   50% {
-    box-shadow: 0 0 30px rgba(99, 102, 241, 0.5);
+    box-shadow: 0 0 30px rgba(100, 100, 100, 0.5);
   }
 }
 
