@@ -49,8 +49,8 @@ class ReActStep(BaseModel):
 
 class QueryRouteResponse(BaseModel):
     route: Literal["NO_SEARCH_CHAT", "MEMORY_ONLY", "WEB_REQUIRED"]
-    reason: str = ""
-    confidence: float = 0.0
+    reason: str
+    confidence: float
 
 
 class JobState(BaseModel):

@@ -79,13 +79,23 @@ class QueryRouterService:
             response = await self.model.generate_content_async(
                 prompt,
                 generation_config=genai.GenerationConfig(
+                    temperature=0.0,
                     response_mime_type="application/json",
                     response_schema=QueryRouteResponse,
                 ),
             )
             result = json.loads(response.text)
-            parsed = QueryRouteResponse(**result)
-            parsed.confidence = max(0.0, min(parsed.confidence, 1.0))
+            route = result.get("route")
+            if route not in ["NO_SEARCH_CHAT", "MEMORY_ONLY", "WEB_REQUIRED"]:
+                route = "WEB_REQUIRED"            
+            reason = result.get("reason", "")
+            confidence = float(result.get("confidence", 0.0))
+            confidence = max(0.0, min(confidence, 1.0))
+            parsed = QueryRouteResponse(
+                route=route,
+                reason=reason,
+                confidence=confidence,
+            )
             return parsed
 
         except Exception as e:
