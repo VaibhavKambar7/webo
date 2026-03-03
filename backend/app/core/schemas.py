@@ -47,6 +47,12 @@ class ReActStep(BaseModel):
     observation: Optional[str] = None
 
 
+class QueryRouteResponse(BaseModel):
+    route: Literal["NO_SEARCH_CHAT", "MEMORY_ONLY", "WEB_REQUIRED"]
+    reason: str = ""
+    confidence: float = 0.0
+
+
 class JobState(BaseModel):
     job_id: str
     chat_id: str
@@ -63,7 +69,7 @@ class JobState(BaseModel):
     confidence: float = 0.0
     confidence_history: List[float] = []
     has_new_evidence: bool = False
-
+    query_router: Optional[QueryRouteResponse] = None
 
 class Action(BaseModel):
     tool: Literal["web_search", "final_answer"]

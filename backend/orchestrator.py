@@ -4,6 +4,7 @@ from backend.services.agent_service import AgentService
 from backend.services.tool_service import ToolService
 from backend.services.synthesis_service import SynthesisService
 from backend.services.decomposer_service import DecomposerService
+from backend.services.query_router_service import QueryRouterService
 import asyncio
 
 
@@ -15,6 +16,7 @@ class Orchestrator:
         self.tool = ToolService()
         self.synthesis = None
         self.decompose = None
+        self.query_router = None
         self.max_iterations = 10
 
     async def run_full_query(self):
@@ -26,8 +28,10 @@ class Orchestrator:
 
             self.synthesis = SynthesisService(self.chat_id)
             self.decompose = DecomposerService(self.chat_id)
+            self.query_router = QueryRouterService(self.chat_id)
 
-            state.status = "THINKING"
+
+            state.status = "WORKING"
             yield state
 
             if state.is_agentic:
@@ -160,60 +164,95 @@ class Orchestrator:
 
     async def _run_workflow(self, state):
         try:
-            state.status = "DECOMPOSING"
-            yield state
 
-            sub_queries = await self.decompose.split_into_search_queries(
-                state.original_query
+            response = await self.query_router.route(state.original_query)
+            state.query_router = response
+            route = response.route
+            state.final_answer = ""
+            state.memory.append(
+                ReActStep(
+                    thought="Routing query before workflow execution.",
+                    action=ReActAction(tool="route_query", input=state.original_query),
+                    observation=(
+                        f"Route={response.route}; "
+                        f"Confidence={response.confidence:.2f}; "
+                        f"Reason={response.reason}"
+                    ),
+                )
+            )
+            state.status = "WORKING"
+            await self.job_service.update_job_state(state)
+            print(
+                f"[ROUTER] job={self.job_id} route={response.route} "
+                f"confidence={response.confidence:.2f} reason={response.reason}"
             )
 
-            state.sub_queries = sub_queries
-            await self.job_service.update_job_state(state)
 
-            state.status = "WORKING"
-            yield state
-
-            async def process_query(query):
-                observation, results = await self.tool.execute(
-                    "web_search",
-                    query,
-                )
-
-                if results:
-                    source_citations = [
-                        {
-                            "title": r.get("title"),
-                            "url": r.get("url"),
-                            "favicon": r.get("favicon"),
-                        }
-                        for r in results
-                    ]
-                    state.sources.extend(source_citations)
-
-                state.memory.append(
-                    ReActStep(
-                        thought=f"Searching for: {query}",
-                        action=ReActAction(tool="web_search", input=query),
-                        observation=observation,
-                    )
-                )
-
-            await asyncio.gather(*[process_query(query) for query in sub_queries])
-
-            await self.job_service.update_job_state(state)
-            yield state
-
-            state.status = "SYNTHESIZING"
-            yield state
-
-            state.final_answer = ""
-
-            async for chunk in self.synthesis.summarize_stream(
-                state.original_query,
-                state.memory,
-            ):
-                state.final_answer += chunk
+            if route == "WEB_REQUIRED":
+                state.status = "DECOMPOSING"
                 yield state
+
+                sub_queries = await self.decompose.split_into_search_queries(
+                    state.original_query
+                )
+
+                state.sub_queries = sub_queries
+                await self.job_service.update_job_state(state)
+
+                state.status = "WORKING"
+                yield state
+
+                async def process_query(query):
+                    observation, results = await self.tool.execute(
+                        "web_search",
+                        query,
+                    )
+
+                    if results:
+                        source_citations = [
+                            {
+                                "title": r.get("title"),
+                                "url": r.get("url"),
+                                "favicon": r.get("favicon"),
+                            }
+                            for r in results
+                        ]
+                        state.sources.extend(source_citations)
+
+                    state.memory.append(
+                        ReActStep(
+                            thought=f"Searching for: {query}",
+                            action=ReActAction(tool="web_search", input=query),
+                            observation=observation,
+                        )
+                    )
+
+                await asyncio.gather(*[process_query(query) for query in sub_queries])
+
+                await self.job_service.update_job_state(state)
+                yield state
+
+                state.status = "SYNTHESIZING"
+                yield state
+
+                async for chunk in self.synthesis.summarize_stream(
+                    state.original_query,
+                    state.memory,
+                ):
+                    state.final_answer += chunk
+                    yield state
+            
+            elif route in ("NO_SEARCH_CHAT", "MEMORY_ONLY"):
+
+                state.status = "WORKING"
+                await self.job_service.update_job_state(state)
+                yield state
+
+                async for chunk in self.synthesis.respond_from_context_stream(
+                    state.original_query, route
+                ):
+                    state.final_answer += chunk
+                    yield state
 
             state.status = "COMPLETED"
             await self.job_service.update_job_state(state)
