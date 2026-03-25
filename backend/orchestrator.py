@@ -86,6 +86,7 @@ class Orchestrator:
                     result = await self._reflection_policy(state)
 
                     if result == "RETRY_SEARCH":
+
                         feedback_step = ReActStep(
                             thought="System Reflection: Confidence is low. Need more evidence.",
                             action=ReActAction(tool="system_feedback", input="retry"),
@@ -94,6 +95,7 @@ class Orchestrator:
                         current_step.observation = "Answer rejected: Confidence too low."
                         state.memory.append(current_step)
                         state.memory.append(feedback_step)
+                        state.total_retries += 1
                         continue
 
                     if tool_input:
@@ -113,6 +115,10 @@ class Orchestrator:
                             (state.final_answer or "")
                             + "\n\nNote: The system confidence was low, so this answer may contain uncertainty."
                         )
+                        state.total_retries = 0
+                    
+                    if result == "ACCEPT": 
+                        state.total_retries = 0
 
                     state.status = "COMPLETED"
                     await self.job_service.update_job_state(state)
@@ -129,19 +135,27 @@ class Orchestrator:
                     tool_input,
                 )
 
+                new_count = 0
+                new_items = []
+
                 if results and tool_name == "web_search":
+
+                    new_count, new_items = self._count_new_sources(results,state.sources)
+
                     source_citations = [
                         {
                             "title": r.get("title"),
                             "url": r.get("url"),
                             "favicon": r.get("favicon"),
                         }
-                        for r in results
+                        for r in new_items
                     ]
+
                     state.sources.extend(source_citations)
+                state.has_new_evidence = new_count > 0
+                state.new_evidence_count = new_count
 
                 current_step.observation = observation
-                state.has_new_evidence = bool(results)
                 state.memory.append(current_step)
 
                 await self.job_service.update_job_state(state)
@@ -208,24 +222,32 @@ class Orchestrator:
                         query,
                     )
 
+                    new_count = 0
+                    new_items = []
+
                     if results:
+                        new_count, new_items = self._count_new_sources(results, state.sources)
                         source_citations = [
                             {
                                 "title": r.get("title"),
                                 "url": r.get("url"),
                                 "favicon": r.get("favicon"),
                             }
-                            for r in results
+                            for r in new_items
                         ]
+
                         state.sources.extend(source_citations)
 
-                    state.memory.append(
-                        ReActStep(
-                            thought=f"Searching for: {query}",
-                            action=ReActAction(tool="web_search", input=query),
-                            observation=observation,
+                        state.has_new_evidence = new_count > 0
+                        state.new_evidence_count = new_count
+
+                        state.memory.append(
+                            ReActStep(
+                                thought=f"Searching for: {query}",
+                                action=ReActAction(tool="web_search", input=query),
+                                observation=observation,
+                            )
                         )
-                    )
 
                 await asyncio.gather(*[process_query(query) for query in sub_queries])
 
@@ -280,21 +302,59 @@ class Orchestrator:
             confidence = state.confidence
             loop_count = state.loop_count
             sources = state.sources
+            sources_count = len(sources)
+            search_count = state.search_count
+            new_evidence_count = state.new_evidence_count
+            total_retries = state.total_retries
+            has_new_evidence = state.has_new_evidence
 
             if loop_count >= self.max_iterations:
                 return "FORCE_FINAL_WITH_CAVEATS"
 
+            if search_count > 0 and not has_new_evidence and total_retries > 3:
+                return "FORCE_FINAL_WITH_CAVEATS"
+
+            if sources_count == 0:
+                return "RETRY_SEARCH"
+
+            if search_count > 0 and new_evidence_count == 0:
+                return "RETRY_SEARCH"
+
             if confidence >= 0.8:
                 return "ACCEPT"
-            
-            if sources == 0:
-                return "RETRY_SEARCH"
 
             return "RETRY_SEARCH"
 
         except Exception:
             print("Error in reflector")
             return "RETRY_SEARCH"
+
+    def _count_new_sources(self, results, existing_sources):
+        existing = set()
+        for src in existing_sources:
+            if url := src.get("url"):
+                if norm := self._normalize_url(url):
+                    existing.add(norm)
+
+        new_count = 0
+        new_items = []
+
+        for r in results:
+            url = r.get("url")
+            content = r.get("content")
+
+            if not url or not content:
+                continue
+
+            norm = self._normalize_url(url)
+            if not norm:
+                continue
+            
+            if norm not in existing:
+                new_count += 1
+                new_items.append(r)
+
+        return new_count,new_items
 
     @staticmethod
     def _normalize_url(url: str) -> str | None:

@@ -69,6 +69,8 @@ class JobState(BaseModel):
     confidence: float = 0.0
     confidence_history: List[float] = []
     has_new_evidence: bool = False
+    new_evidence_count: int = 0
+    total_retries: int = 0
     query_router: Optional[QueryRouteResponse] = None
 
 class Action(BaseModel):
