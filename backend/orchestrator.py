@@ -6,7 +6,7 @@ from backend.services.synthesis_service import SynthesisService
 from backend.services.decomposer_service import DecomposerService
 from backend.services.query_router_service import QueryRouterService
 import asyncio
-
+from urllib.parse import urlparse, urlunparse
 
 class Orchestrator:
     def __init__(self, job_id: str):
@@ -279,15 +279,47 @@ class Orchestrator:
         try:
             confidence = state.confidence
             loop_count = state.loop_count
+            sources = state.sources
 
             if loop_count >= self.max_iterations:
                 return "FORCE_FINAL_WITH_CAVEATS"
 
             if confidence >= 0.8:
                 return "ACCEPT"
+            
+            if sources == 0:
+                return "RETRY_SEARCH"
 
             return "RETRY_SEARCH"
 
         except Exception:
             print("Error in reflector")
             return "RETRY_SEARCH"
+
+    @staticmethod
+    def _normalize_url(url: str) -> str | None:
+        try:
+
+            parsed = urlparse(url)
+
+            if not parsed.scheme or not parsed.netloc:
+                return None
+            
+            scheme = parsed.scheme.lower()
+            netloc = parsed.netloc.lower()
+
+            netloc = netloc.replace("www.","")
+
+            if netloc.endswith(":80") and scheme == "http":
+                netloc = netloc[:-3]
+            elif netloc.endswith(":443") and scheme == "https":
+                netloc = netloc[:-4]
+
+            path = parsed.path or "/"
+            if path != "/" and path.endswith("/"):
+                path = path[:-1]
+
+            return urlunparse((scheme, netloc, path, "", "", ""))
+
+        except Exception:
+            return None
