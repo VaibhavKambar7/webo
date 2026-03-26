@@ -238,8 +238,10 @@ class Orchestrator:
 
                         state.sources.extend(source_citations)
 
-                        state.has_new_evidence = new_count > 0
-                        state.new_evidence_count = new_count
+                        state.has_new_evidence = state.has_new_evidence or (
+                            new_count > 0
+                        )
+                        state.new_evidence_count += new_count
 
                         state.memory.append(
                             ReActStep(
@@ -353,6 +355,7 @@ class Orchestrator:
             if norm not in existing:
                 new_count += 1
                 new_items.append(r)
+                existing.add(norm)
 
         return new_count,new_items
 

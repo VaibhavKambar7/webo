@@ -132,11 +132,31 @@ class SynthesisService:
             print(f"Error during summary generation: {e}")
 
     def _compile_context(self, memory: List[ReActStep]) -> str:
-        """Combines all observations into a single context block."""
+        """Build a bounded synthesis context from the newest observations first."""
         observations = [step.observation for step in memory if step.observation]
         if not observations:
             return "No information was gathered."
-        return "\n\n---\n\n".join(observations)
+
+        max_total_chars = 16000
+        max_chars_per_observation = 900
+        selected = []
+        current_len = 0
+
+        for obs in reversed(observations):
+            trimmed_obs = (
+                obs[:max_chars_per_observation] + "..."
+                if len(obs) > max_chars_per_observation
+                else obs
+            )
+
+            if current_len + len(trimmed_obs) > max_total_chars:
+                break
+
+            selected.append(trimmed_obs)
+            current_len += len(trimmed_obs)
+
+        selected.reverse()
+        return "\n\n---\n\n".join(selected)
 
     async def respond_from_context_stream(
         self, query: str, route: str

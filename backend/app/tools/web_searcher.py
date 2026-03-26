@@ -30,7 +30,7 @@ class WebSearcher:
             logger.error(f"Failed to initialize Exa client: {e}")
             raise
 
-    def _truncate_content(self, text: str, max_chars: int = 4000) -> str:
+    def _truncate_content(self, text: str, max_chars: int = 1500) -> str:
         """
         helper to truncate text
         """
