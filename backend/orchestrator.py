@@ -5,6 +5,7 @@ from backend.services.tool_service import ToolService
 from backend.services.synthesis_service import SynthesisService
 from backend.services.decomposer_service import DecomposerService
 from backend.services.query_router_service import QueryRouterService
+from backend.services.tracer_service import TracerService
 import asyncio
 from urllib.parse import urlparse, urlunparse
 
@@ -14,6 +15,7 @@ class Orchestrator:
         self.job_service = JobService()
         self.agent = AgentService()
         self.tool = ToolService()
+        self.tracer = TracerService(job_id)
         self.synthesis = None
         self.decompose = None
         self.query_router = None
@@ -21,15 +23,25 @@ class Orchestrator:
 
     async def run_full_query(self):
         """main workflow to run the entire query process."""
+        root_span = self.tracer.start_span("job.run", attributes={
+            "job.id": self.job_id,
+        })
+        self.root_span_id = root_span.span_id
+
         try:
             state = await self.job_service.get_job_state(self.job_id)
             self.chat_id = state.chat_id
             self.is_agentic = state.is_agentic
 
+            self.tracer.set_attributes(root_span.span_id, {
+                "chat.id": self.chat_id,
+                "is_agentic": self.is_agentic,
+                "query.length": len(state.original_query),
+            })
+
             self.synthesis = SynthesisService(self.chat_id)
             self.decompose = DecomposerService(self.chat_id)
             self.query_router = QueryRouterService(self.chat_id)
-
 
             state.status = "WORKING"
             yield state
@@ -41,11 +53,16 @@ class Orchestrator:
                 async for next_state in self._run_workflow(state):
                     yield next_state
 
+            self.tracer.finish_span(root_span.span_id, status="ok")
+
         except Exception as e:
             import traceback
 
             print(f"❌ Error in job {self.job_id}: {e}")
             print(f"Traceback: {traceback.format_exc()}")
+
+            self.tracer.record_error(root_span.span_id, str(e))
+            self.tracer.finish_span(root_span.span_id, status="error", error=str(e))
 
             try:
                 state = await self.job_service.get_job_state(self.job_id)
@@ -177,12 +194,29 @@ class Orchestrator:
                 pass
 
     async def _run_workflow(self, state):
-        try:
+        router_span = self.tracer.start_span("workflow.route_query", parent_span_id=self.root_span_id, attributes={
+            "query.length": len(state.original_query),
+            "memory.count": len(state.memory),
+        })
 
-            response = await self.query_router.route(state.original_query)
+        try:
+            try:
+                response = await self.query_router.route(state.original_query)
+            except Exception as e:
+                self.tracer.record_error(router_span.span_id, str(e))
+                self.tracer.finish_span(router_span.span_id, status="error", error=str(e))
+                raise
             state.query_router = response
             route = response.route
             state.final_answer = ""
+
+            self.tracer.set_attributes(router_span.span_id, {
+                "route.label": route,
+                "route.confidence": response.confidence,
+                "route.reason": response.reason,
+            })
+            self.tracer.finish_span(router_span.span_id, status="ok")
+
             state.memory.append(
                 ReActStep(
                     thought="Routing query before workflow execution.",
@@ -201,14 +235,26 @@ class Orchestrator:
                 f"confidence={response.confidence:.2f} reason={response.reason}"
             )
 
-
             if route == "WEB_REQUIRED":
+                decompose_span = self.tracer.start_span("workflow.decompose", parent_span_id=self.root_span_id, attributes={
+                    "query.length": len(state.original_query),
+                })
+
                 state.status = "DECOMPOSING"
                 yield state
 
                 sub_queries = await self.decompose.split_into_search_queries(
                     state.original_query
                 )
+
+                if len(sub_queries) > 4:
+                    print(f"Throttling parallel subqueries from {len(sub_queries)} down to 4")
+                    sub_queries = sub_queries[:4]
+
+                self.tracer.set_attributes(decompose_span.span_id, {
+                    "sub_queries.count": len(sub_queries),
+                })
+                self.tracer.finish_span(decompose_span.span_id, status="ok")
 
                 state.sub_queries = sub_queries
                 await self.job_service.update_job_state(state)
@@ -217,6 +263,10 @@ class Orchestrator:
                 yield state
 
                 async def process_query(query):
+                    search_span = self.tracer.start_span("workflow.web_search", parent_span_id=self.root_span_id, attributes={
+                        "search.query": query,
+                    })
+
                     observation, results = await self.tool.execute(
                         "web_search",
                         query,
@@ -251,10 +301,29 @@ class Orchestrator:
                             )
                         )
 
+                    if results:
+                        self.tracer.add_event(search_span.span_id, "search.results_received")
+                    else:
+                        self.tracer.add_event(search_span.span_id, "search.no_results")
+
+                    self.tracer.set_attributes(search_span.span_id, {
+                        "results.count": len(results) if results else 0,
+                        "new_evidence_count": new_count,
+                        "has_new_evidence": new_count > 0,
+                    })
+                    self.tracer.finish_span(search_span.span_id, status="ok")
+
                 await asyncio.gather(*[process_query(query) for query in sub_queries])
 
                 await self.job_service.update_job_state(state)
                 yield state
+
+                approx_context_len = sum(len(step.observation) for step in state.memory if step.observation)
+                synth_span = self.tracer.start_span("workflow.synthesize", parent_span_id=self.root_span_id, attributes={
+                    "memory.count": len(state.memory),
+                    "sources.count": len(state.sources),
+                    "context.char_count": approx_context_len,
+                })
 
                 state.status = "SYNTHESIZING"
                 yield state
@@ -265,6 +334,11 @@ class Orchestrator:
                 ):
                     state.final_answer += chunk
                     yield state
+
+                self.tracer.set_attributes(synth_span.span_id, {
+                    "answer.char_count": len(state.final_answer),
+                })
+                self.tracer.finish_span(synth_span.span_id, status="ok")
             
             elif route in ("NO_SEARCH_CHAT", "MEMORY_ONLY"):
 
@@ -272,11 +346,20 @@ class Orchestrator:
                 await self.job_service.update_job_state(state)
                 yield state
 
+                synth_span = self.tracer.start_span("workflow.synthesize_chat", parent_span_id=self.root_span_id, attributes={
+                    "memory.count": len(state.memory),
+                })
+
                 async for chunk in self.synthesis.respond_from_context_stream(
                     state.original_query, route
                 ):
                     state.final_answer += chunk
                     yield state
+
+                self.tracer.set_attributes(synth_span.span_id, {
+                    "answer.char_count": len(state.final_answer),
+                })
+                self.tracer.finish_span(synth_span.span_id, status="ok")
 
             state.status = "COMPLETED"
             await self.job_service.update_job_state(state)
