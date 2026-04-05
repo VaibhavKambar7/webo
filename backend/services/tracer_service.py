@@ -5,7 +5,7 @@ from typing import Any
 from datetime import datetime
 from dataclasses import asdict
 
-from backend.app.core import TraceSpan
+from backend.app.core import TraceSpan, TraceEvent
 
 
 class TracerService:
@@ -22,7 +22,7 @@ class TracerService:
         attributes: dict | None = None,
     ) -> TraceSpan:
         span_id = self._generate_id()
-        start_time = datetime.utcnow()
+        start_time = datetime.utcnow().isoformat()
 
         span = TraceSpan(
             span_id=span_id,
@@ -37,7 +37,7 @@ class TracerService:
         return span
 
     def finish_span(self, span_id: str, status="ok", error: str | None = None):
-        end_time = datetime.utcnow()
+        end_time = datetime.utcnow().isoformat()
 
         span = self.spans.get(span_id)
         if span is None:
@@ -59,6 +59,69 @@ class TracerService:
             "spans": spans_data,
         }
 
+        self._save(trace_data)
+
+    def set_attribute(self, span_id: str, key: str, value: Any):
+        span = self.spans.get(span_id)
+        if span is None:
+            raise ValueError(f"Span {span_id} not found")
+
+        span.attributes[key] = value
+
+        self._save(self._build_trace_data())
+
+
+    def set_attributes(self, span_id: str, attributes: dict[str, Any] | None):
+        span = self.spans.get(span_id)
+        if span is None:
+            raise ValueError(f"Span {span_id} not found")
+
+        attributes = attributes or {}
+        span.attributes.update(attributes)
+
+        self._save(self._build_trace_data())
+
+    def add_event(
+    self,
+    span_id: str,
+    name: str,
+    attributes: dict[str, Any] | None = None,):
+
+        span = self.spans.get(span_id)
+        if span is None:
+            raise ValueError(f"Span {span_id} not found")
+
+        event = TraceEvent(
+            timestamp=datetime.utcnow().isoformat(),
+            name=name,
+            attributes=attributes or {},
+        )
+
+        span.events.append(event)
+
+        trace_data = self._build_trace_data()
+        self._save(trace_data)
+
+    def record_error(self, span_id: str, error: str, attributes: dict[str, Any] | None = None):
+        span = self.spans.get(span_id)
+        if span is None:
+            raise ValueError(f"Span {span_id} not found")
+
+        span.status = "error"
+        span.error = error
+
+        event = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "name": "exception",
+            "attributes": {
+                "error.message": error,
+                **(attributes or {})
+            }
+        }
+
+        span.events.append(event)
+
+        trace_data = self._build_trace_data()
         self._save(trace_data)
 
     def _generate_id(self) -> str:
