@@ -102,7 +102,12 @@ class TracerService:
         trace_data = self._build_trace_data()
         self._save(trace_data)
 
-    def record_error(self, span_id: str, error: str, attributes: dict[str, Any] | None = None):
+    def record_error(
+        self,
+        span_id: str,
+        error: str,
+        attributes: dict[str, Any] | None = None,
+    ):
         span = self.spans.get(span_id)
         if span is None:
             raise ValueError(f"Span {span_id} not found")
@@ -110,14 +115,14 @@ class TracerService:
         span.status = "error"
         span.error = error
 
-        event = {
-            "timestamp": datetime.utcnow(),
-            "name": "exception",
-            "attributes": {
+        event = TraceEvent(
+            timestamp=datetime.utcnow(),
+            name="exception",
+            attributes={
                 "error.message": error,
-                **(attributes or {})
-            }
-        }
+                **(attributes or {}),
+            },
+        )
 
         span.events.append(event)
 
@@ -138,7 +143,19 @@ class TracerService:
 
         data["start_time"] = span.start_time.isoformat()
 
+
         if span.end_time:
             data["end_time"] = span.end_time.isoformat()
+
+        serialized_events = []
+
+        for event in span.events:
+            serialized_events.append({
+                "timestamp" : event.timestamp.isoformat(),
+                "name": event.name,
+                "attributes": event.attributes,
+            })
+        
+        data["events"] = serialized_events
 
         return data
