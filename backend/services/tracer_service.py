@@ -22,7 +22,7 @@ class TracerService:
         attributes: dict | None = None,
     ) -> TraceSpan:
         span_id = self._generate_id()
-        start_time = datetime.utcnow().isoformat()
+        start_time = datetime.utcnow()
 
         span = TraceSpan(
             span_id=span_id,
@@ -37,7 +37,7 @@ class TracerService:
         return span
 
     def finish_span(self, span_id: str, status="ok", error: str | None = None):
-        end_time = datetime.utcnow().isoformat()
+        end_time = datetime.utcnow()
 
         span = self.spans.get(span_id)
         if span is None:
@@ -92,7 +92,7 @@ class TracerService:
             raise ValueError(f"Span {span_id} not found")
 
         event = TraceEvent(
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.utcnow(),
             name=name,
             attributes=attributes or {},
         )
@@ -111,7 +111,7 @@ class TracerService:
         span.error = error
 
         event = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.utcnow(),
             "name": "exception",
             "attributes": {
                 "error.message": error,
