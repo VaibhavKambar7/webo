@@ -81,18 +81,41 @@ class Orchestrator:
                 iteration += 1
                 state.loop_count = iteration 
 
-                action_decision = await self.agent.think(
-                    sub_query=state.original_query,
-                    memory=state.memory,
-                )
+                iter_span = self.tracer.start_span("agent.iteration", parent_span_id=self.root_span_id, attributes={
+                    "iteration": iteration,
+                    "memory.count": len(state.memory),
+                    "sources.count": len(state.sources),
+                })
 
-                thought = action_decision.thought
-                action_object = action_decision.action
-                tool_name = action_object.tool
-                tool_input = action_object.input
+                think_span = self.tracer.start_span("agent.think", parent_span_id=iter_span.span_id, attributes={
+                    "iteration": iteration,
+                    "query.length": len(state.original_query),
+                    "memory.count": len(state.memory),
+                })
 
-                state.confidence_history.append(action_decision.confidence)
-                state.confidence = action_decision.confidence
+                try:
+                    action_decision = await self.agent.think(
+                        sub_query=state.original_query,
+                        memory=state.memory,
+                    )
+                    
+                    thought = action_decision.thought
+                    action_object = action_decision.action
+                    tool_name = action_object.tool
+                    tool_input = action_object.input
+
+                    state.confidence_history.append(action_decision.confidence)
+                    state.confidence = action_decision.confidence
+
+                    self.tracer.set_attributes(think_span.span_id, {
+                        "tool.name": tool_name,
+                        "confidence": action_decision.confidence,
+                    })
+                    self.tracer.finish_span(think_span.span_id, status="ok")
+                except Exception as e:
+                    self.tracer.record_error(think_span.span_id, str(e))
+                    self.tracer.finish_span(think_span.span_id, status="error", error=str(e))
+                    raise
 
                 current_step = ReActStep(
                     thought=thought,
@@ -100,9 +123,24 @@ class Orchestrator:
                 )
 
                 if tool_name == "final_answer":
+                    reflect_span = self.tracer.start_span("agent.reflect", parent_span_id=iter_span.span_id, attributes={
+                        "confidence": state.confidence,
+                        "loop_count": state.loop_count,
+                        "search_count": state.search_count,
+                        "sources.count": len(state.sources),
+                        "new_evidence_count": state.new_evidence_count,
+                        "has_new_evidence": state.has_new_evidence,
+                    })
+
                     result = await self._reflection_policy(state)
 
+                    self.tracer.set_attributes(reflect_span.span_id, {
+                        "reflection.decision": result
+                    })
+
                     if result == "RETRY_SEARCH":
+                        self.tracer.add_event(reflect_span.span_id, "reflection.retry_triggered")
+                        self.tracer.finish_span(reflect_span.span_id, status="ok")
 
                         feedback_step = ReActStep(
                             thought="System Reflection: Confidence is low. Need more evidence.",
@@ -113,19 +151,34 @@ class Orchestrator:
                         state.memory.append(current_step)
                         state.memory.append(feedback_step)
                         state.total_retries += 1
+                        
+                        self.tracer.finish_span(iter_span.span_id, status="ok")
                         continue
+
+                    if result == "FORCE_FINAL_WITH_CAVEATS":
+                        self.tracer.add_event(reflect_span.span_id, "reflection.force_final")
+
+                    self.tracer.finish_span(reflect_span.span_id, status="ok")
+
+                    finalize_span = self.tracer.start_span("agent.finalize", parent_span_id=iter_span.span_id, attributes={
+                        "mode": "direct" if tool_input else "synthesis"
+                    })
 
                     if tool_input:
                         state.final_answer = tool_input
+                        self.tracer.finish_span(finalize_span.span_id, status="ok")
                     else:
                         state.status = "SYNTHESIZING"
                         yield state
                         state.final_answer = ""
+                        self.tracer.add_event(finalize_span.span_id, "synthesis.started_stream")
                         async for chunk in self.synthesis.summarize_stream(
                             state.original_query, state.memory
                         ):
                             state.final_answer += chunk
                             yield state
+                        self.tracer.add_event(finalize_span.span_id, "synthesis.finished_stream")
+                        self.tracer.finish_span(finalize_span.span_id, status="ok")
 
                     if result == "FORCE_FINAL_WITH_CAVEATS":
                         state.final_answer = (
@@ -140,6 +193,7 @@ class Orchestrator:
                     state.status = "COMPLETED"
                     await self.job_service.update_job_state(state)
                     yield state
+                    self.tracer.finish_span(iter_span.span_id, status="ok")
                     break
 
                 state.status = "WORKING"
@@ -147,36 +201,60 @@ class Orchestrator:
 
                 state.search_count += 1
 
-                observation, results = await self.tool.execute(
-                    tool_name,
-                    tool_input,
-                )
+                tool_span = self.tracer.start_span("agent.tool_execute", parent_span_id=iter_span.span_id, attributes={
+                    "tool.name": tool_name,
+                    "tool.input": tool_input,
+                })
 
-                new_count = 0
-                new_items = []
+                try:
+                    observation, results = await self.tool.execute(
+                        tool_name,
+                        tool_input,
+                    )
 
-                if results and tool_name == "web_search":
+                    new_count = 0
+                    new_items = []
 
-                    new_count, new_items = self._count_new_sources(results,state.sources)
+                    if results and tool_name == "web_search":
+                        new_count, new_items = self._count_new_sources(results, state.sources)
 
-                    source_citations = [
-                        {
-                            "title": r.get("title"),
-                            "url": r.get("url"),
-                            "favicon": r.get("favicon"),
-                        }
-                        for r in new_items
-                    ]
+                        source_citations = [
+                            {
+                                "title": r.get("title"),
+                                "url": r.get("url"),
+                                "favicon": r.get("favicon"),
+                            }
+                            for r in new_items
+                        ]
 
-                    state.sources.extend(source_citations)
-                state.has_new_evidence = new_count > 0
-                state.new_evidence_count = new_count
+                        state.sources.extend(source_citations)
+                        
+                        if results:
+                            self.tracer.add_event(tool_span.span_id, "search.results_received")
+                        else:
+                            self.tracer.add_event(tool_span.span_id, "search.no_results")
+
+                    state.has_new_evidence = new_count > 0
+                    state.new_evidence_count = new_count
+
+                    self.tracer.set_attributes(tool_span.span_id, {
+                        "results.count": len(results) if results else 0,
+                        "new_evidence_count": new_count,
+                        "has_new_evidence": new_count > 0,
+                    })
+                    self.tracer.finish_span(tool_span.span_id, status="ok")
+                except Exception as e:
+                    self.tracer.record_error(tool_span.span_id, str(e))
+                    self.tracer.finish_span(tool_span.span_id, status="error", error=str(e))
+                    raise
 
                 current_step.observation = observation
                 state.memory.append(current_step)
 
                 await self.job_service.update_job_state(state)
                 yield state
+
+                self.tracer.finish_span(iter_span.span_id, status="ok")
 
         except Exception as e:
             import traceback
