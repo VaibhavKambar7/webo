@@ -171,6 +171,10 @@ class Orchestrator:
                         state.status = "SYNTHESIZING"
                         yield state
                         state.final_answer = ""
+                        approx_context_len = sum(len(step.observation) for step in state.memory if step.observation)
+                        if approx_context_len > 16000:
+                            self.tracer.add_event(finalize_span.span_id, "context.truncated")
+                        
                         self.tracer.add_event(finalize_span.span_id, "synthesis.started_stream")
                         async for chunk in self.synthesis.summarize_stream(
                             state.original_query, state.memory
@@ -285,6 +289,10 @@ class Orchestrator:
                 self.tracer.finish_span(router_span.span_id, status="error", error=str(e))
                 raise
             state.query_router = response
+            
+            if response.reason == "Router fallback on error." or response.confidence < 0.3:
+                self.tracer.add_event(router_span.span_id, "router.fallback_used")
+                
             route = response.route
             state.final_answer = ""
 
@@ -406,12 +414,17 @@ class Orchestrator:
                 state.status = "SYNTHESIZING"
                 yield state
 
+                if approx_context_len > 16000:
+                    self.tracer.add_event(synth_span.span_id, "context.truncated")
+
+                self.tracer.add_event(synth_span.span_id, "synthesis.started_stream")
                 async for chunk in self.synthesis.summarize_stream(
                     state.original_query,
                     state.memory,
                 ):
                     state.final_answer += chunk
                     yield state
+                self.tracer.add_event(synth_span.span_id, "synthesis.finished_stream")
 
                 self.tracer.set_attributes(synth_span.span_id, {
                     "answer.char_count": len(state.final_answer),
@@ -427,12 +440,19 @@ class Orchestrator:
                 synth_span = self.tracer.start_span("workflow.synthesize_chat", parent_span_id=self.root_span_id, attributes={
                     "memory.count": len(state.memory),
                 })
+                
+                approx_context_len = sum(len(step.observation) for step in state.memory if step.observation)
+                if approx_context_len > 16000:
+                    self.tracer.add_event(synth_span.span_id, "context.truncated")
 
+                self.tracer.add_event(synth_span.span_id, "synthesis.started_stream")
                 async for chunk in self.synthesis.respond_from_context_stream(
                     state.original_query, route
                 ):
                     state.final_answer += chunk
                     yield state
+                
+                self.tracer.add_event(synth_span.span_id, "synthesis.finished_stream")
 
                 self.tracer.set_attributes(synth_span.span_id, {
                     "answer.char_count": len(state.final_answer),
