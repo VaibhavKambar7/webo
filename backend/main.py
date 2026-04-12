@@ -1,5 +1,6 @@
 import uuid
 import json
+import os
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from backend.app.core.schemas import AskResponse, QueryRequest
@@ -122,3 +123,17 @@ async def event_streamer(job_id: str):
             yield f"data:{json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+@app.get("/traces/{job_id}")
+async def get_trace(job_id: str):
+    """
+    Returns the trace JSON for a given job.
+    """
+    trace_path = f"backend/traces/{job_id}.json"
+    if not os.path.exists(trace_path):
+        raise HTTPException(status_code=404, detail="Trace not found")
+        
+    with open(trace_path, "r") as f:
+        trace_data = json.load(f)
+        
+    return trace_data
