@@ -17,12 +17,13 @@ class QueryRouterService:
         self.chat_service = ChatService()
         self.chat_id = chat_id
 
-    async def route(self, query: str) -> QueryRouteResponse:
+    async def route(self, query: str) -> tuple[QueryRouteResponse, dict]:
         """
         Routes the query before workflow execution:
         - NO_SEARCH_CHAT: greeting/chitchat/meta conversation
         - MEMORY_ONLY: answer should come from chat history/context
         - WEB_REQUIRED: external/fresh information is needed
+        Returns (QueryRouteResponse, usage_dict).
         """
         query = (query or "").strip()
         if not query:
@@ -30,7 +31,7 @@ class QueryRouterService:
                 route="NO_SEARCH_CHAT",
                 reason="Empty query treated as conversational input.",
                 confidence=1.0,
-            )
+            ), {}
 
         try:
             content = await self.chat_service.get_chat_state(self.chat_id)
@@ -84,6 +85,14 @@ class QueryRouterService:
                     response_schema=QueryRouteResponse,
                 ),
             )
+
+            usage = {}
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                usage = {
+                    "input_tokens": getattr(response.usage_metadata, "prompt_token_count", 0) or 0,
+                    "output_tokens": getattr(response.usage_metadata, "candidates_token_count", 0) or 0,
+                }
+
             result = json.loads(response.text)
             route = result.get("route")
             if route not in ["NO_SEARCH_CHAT", "MEMORY_ONLY", "WEB_REQUIRED"]:
@@ -96,7 +105,7 @@ class QueryRouterService:
                 reason=reason,
                 confidence=confidence,
             )
-            return parsed
+            return parsed, usage
 
         except Exception as e:
             logger.error(f"Query router error: {e}")
@@ -104,4 +113,4 @@ class QueryRouterService:
                 route="WEB_REQUIRED",
                 reason="Router fallback on error.",
                 confidence=0.0,
-            )
+            ), {}

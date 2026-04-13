@@ -10,10 +10,11 @@ class AgentService:
         genai.configure(api_key=settings.GEMINI_API_KEY)
         self.model = genai.GenerativeModel("gemini-2.5-flash-lite")
 
-    async def think(self, sub_query: str, memory: List[ReActStep]) -> AgentResponse:
+    async def think(self, sub_query: str, memory: List[ReActStep]) -> tuple[AgentResponse, dict]:
         """
         (PROMPT) This is the "Think" step of the ReAct loop.
         Decides the next action to take using structured output.
+        Returns (AgentResponse, usage_dict).
         """
 
         prompt = self._build_react_prompt(sub_query, memory)
@@ -27,7 +28,14 @@ class AgentService:
             )
             result = json.loads(response.text)
 
-            return AgentResponse(**result)
+            usage = {}
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                usage = {
+                    "input_tokens": getattr(response.usage_metadata, "prompt_token_count", 0) or 0,
+                    "output_tokens": getattr(response.usage_metadata, "candidates_token_count", 0) or 0,
+                }
+
+            return AgentResponse(**result), usage
 
         except Exception as e:
             print(f"❌ Error in agent.think(): {e}")
@@ -36,7 +44,7 @@ class AgentService:
                 thought="An error occurred during thinking. Concluding this loop.",
                 action=Action(tool="final_answer", input="Error occurred"),
                 confidence=0.0,
-            )
+            ), {}
 
     def _build_react_prompt(self, sub_query: str, memory: List[ReActStep]) -> str:
         """Enhanced prompt for agentic decision-making."""

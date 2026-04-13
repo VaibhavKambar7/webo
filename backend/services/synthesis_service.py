@@ -16,6 +16,7 @@ class SynthesisService:
         self.chat_manager = ChatManager(chat_id)
         self.chat_service = ChatService()
         self.chat_id = chat_id
+        self.last_usage: dict = {}
 
     async def summarize_stream(
         self,
@@ -75,6 +76,14 @@ class SynthesisService:
                 if chunk.text:
                     final_answer += chunk.text
                     yield chunk.text
+
+            # Capture usage from completed stream
+            self.last_usage = {}
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                self.last_usage = {
+                    "input_tokens": getattr(response.usage_metadata, "prompt_token_count", 0) or 0,
+                    "output_tokens": getattr(response.usage_metadata, "candidates_token_count", 0) or 0,
+                }
 
             if background_tasks:
                 background_tasks.add_task(
@@ -213,6 +222,14 @@ class SynthesisService:
                 if chunk.text:
                     final_answer += chunk.text
                     yield chunk.text
+
+            # Capture usage from completed stream
+            self.last_usage = {}
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                self.last_usage = {
+                    "input_tokens": getattr(response.usage_metadata, "prompt_token_count", 0) or 0,
+                    "output_tokens": getattr(response.usage_metadata, "candidates_token_count", 0) or 0,
+                }
 
             await self.summarize_chat(query, final_answer)
 

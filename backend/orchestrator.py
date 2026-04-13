@@ -6,6 +6,7 @@ from backend.services.synthesis_service import SynthesisService
 from backend.services.decomposer_service import DecomposerService
 from backend.services.query_router_service import QueryRouterService
 from backend.services.tracer_service import TracerService
+from backend.services.usage_tracker import UsageTracker
 import asyncio
 from urllib.parse import urlparse, urlunparse
 
@@ -16,6 +17,7 @@ class Orchestrator:
         self.agent = AgentService()
         self.tool = ToolService()
         self.tracer = TracerService(job_id)
+        self.usage = UsageTracker()
         self.synthesis = None
         self.decompose = None
         self.query_router = None
@@ -53,6 +55,7 @@ class Orchestrator:
                 async for next_state in self._run_workflow(state):
                     yield next_state
 
+            self.tracer.set_attributes(root_span.span_id, self.usage.get_summary())
             self.tracer.finish_span(root_span.span_id, status="ok")
 
         except Exception as e:
@@ -94,10 +97,11 @@ class Orchestrator:
                 })
 
                 try:
-                    action_decision = await self.agent.think(
+                    action_decision, think_usage = await self.agent.think(
                         sub_query=state.original_query,
                         memory=state.memory,
                     )
+                    self.usage.record_llm_call("agent.think", "gemini-2.5-flash-lite", think_usage.get("input_tokens", 0), think_usage.get("output_tokens", 0))
                     
                     thought = action_decision.thought
                     action_object = action_decision.action
@@ -182,6 +186,7 @@ class Orchestrator:
                             state.final_answer += chunk
                             yield state
                         self.tracer.add_event(finalize_span.span_id, "synthesis.finished_stream")
+                        self.usage.record_llm_call("agent.finalize.synthesis", "gemini-2.5-flash-lite", self.synthesis.last_usage.get("input_tokens", 0), self.synthesis.last_usage.get("output_tokens", 0))
                         self.tracer.finish_span(finalize_span.span_id, status="ok")
 
                     if result == "FORCE_FINAL_WITH_CAVEATS":
@@ -204,6 +209,7 @@ class Orchestrator:
                 yield state
 
                 state.search_count += 1
+                self.usage.record_web_search()
 
                 tool_span = self.tracer.start_span("agent.tool_execute", parent_span_id=iter_span.span_id, attributes={
                     "tool.name": tool_name,
@@ -283,7 +289,8 @@ class Orchestrator:
 
         try:
             try:
-                response = await self.query_router.route(state.original_query)
+                response, router_usage = await self.query_router.route(state.original_query)
+                self.usage.record_llm_call("workflow.route_query", "gemini-2.5-flash-lite", router_usage.get("input_tokens", 0), router_usage.get("output_tokens", 0))
             except Exception as e:
                 self.tracer.record_error(router_span.span_id, str(e))
                 self.tracer.finish_span(router_span.span_id, status="error", error=str(e))
@@ -329,9 +336,10 @@ class Orchestrator:
                 state.status = "DECOMPOSING"
                 yield state
 
-                sub_queries = await self.decompose.split_into_search_queries(
+                sub_queries, decompose_usage = await self.decompose.split_into_search_queries(
                     state.original_query
                 )
+                self.usage.record_llm_call("workflow.decompose", "gemini-2.5-flash-lite", decompose_usage.get("input_tokens", 0), decompose_usage.get("output_tokens", 0))
 
                 if len(sub_queries) > 4:
                     print(f"Throttling parallel subqueries from {len(sub_queries)} down to 4")
@@ -398,6 +406,7 @@ class Orchestrator:
                         "has_new_evidence": new_count > 0,
                     })
                     self.tracer.finish_span(search_span.span_id, status="ok")
+                    self.usage.record_web_search()
 
                 await asyncio.gather(*[process_query(query) for query in sub_queries])
 
@@ -425,6 +434,7 @@ class Orchestrator:
                     state.final_answer += chunk
                     yield state
                 self.tracer.add_event(synth_span.span_id, "synthesis.finished_stream")
+                self.usage.record_llm_call("workflow.synthesize", "gemini-2.5-flash-lite", self.synthesis.last_usage.get("input_tokens", 0), self.synthesis.last_usage.get("output_tokens", 0))
 
                 self.tracer.set_attributes(synth_span.span_id, {
                     "answer.char_count": len(state.final_answer),
@@ -453,6 +463,7 @@ class Orchestrator:
                     yield state
                 
                 self.tracer.add_event(synth_span.span_id, "synthesis.finished_stream")
+                self.usage.record_llm_call("workflow.synthesize_chat", "gemini-2.5-flash-lite", self.synthesis.last_usage.get("input_tokens", 0), self.synthesis.last_usage.get("output_tokens", 0))
 
                 self.tracer.set_attributes(synth_span.span_id, {
                     "answer.char_count": len(state.final_answer),

@@ -15,7 +15,7 @@ class DecomposerService:
         self.chat_service = ChatService()
         self.chat_id = chat_id
 
-    async def split_into_search_queries(self, query: str) -> List[str]:
+    async def split_into_search_queries(self, query: str) -> tuple[List[str], dict]:
         content = await self.chat_service.get_chat_state(self.chat_id)
 
         summary = content.summary or None
@@ -74,11 +74,18 @@ class DecomposerService:
             response = await self.model.generate_content_async(prompt)
             result = json.loads(response.text)
 
-            if isinstance(result, dict):
-                return result.get("search_queries", [query])
+            usage = {}
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                usage = {
+                    "input_tokens": getattr(response.usage_metadata, "prompt_token_count", 0) or 0,
+                    "output_tokens": getattr(response.usage_metadata, "candidates_token_count", 0) or 0,
+                }
 
-            return [query]
+            if isinstance(result, dict):
+                return result.get("search_queries", [query]), usage
+
+            return [query], usage
 
         except Exception as e:
             print(f"Decomposer error → fallback: {e}")
-            return [query]
+            return [query], {}
