@@ -1,14 +1,31 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Literal, Dict, Any
+import re
 
 # --- API Schemas ---
 
 
 class QueryRequest(BaseModel):
-    query: str
-    chat_id: str
+    query: str = Field(
+        ..., min_length=1, max_length=4000
+    )  # ... means field is required
+    chat_id: str = Field(..., min_length=1, max_length=100)
     is_agentic: bool = False
 
+    @field_validator("query")
+    @classmethod
+    def sanitize_query(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Query cannot be empty")
+        return v
+
+    @field_validator("chat_id")
+    @classmethod
+    def validate_chat_id(cls, v: str) -> str:
+        if not re.match(r"^[a-f0-9\-]{36}$", v):
+            raise ValueError("Invalid chat_id format - must be a UUID")
+        return v
 
 class AskResponse(BaseModel):
     job_id: str
