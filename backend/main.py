@@ -11,7 +11,8 @@ from backend.orchestrator import Orchestrator
 from fastapi.responses import StreamingResponse
 from contextlib import asynccontextmanager
 from backend.app.core.database import engine, Base
-
+from backend.app.guardrails.sanitizer import sanitize_input, contains_encoding_attack
+from backend.app.guardrails.injection_guard import detect_injection
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -63,10 +64,24 @@ async def ask_question(request: QueryRequest, background_tasks: BackgroundTasks)
     submits a new query and returns a job_id for streaming.
     """
     job_id = str(uuid.uuid4())
+    
+    # 1. Sanitize (remove invisible chars, normalize unicode)
+    clean_query = sanitize_input(request.query)
+
+    # 1b. Encoding attack check
+    if contains_encoding_attack(clean_query):
+        raise HTTPException(status_code=400, detail="Your query could not be processed.")
+
+    # 2. Injection detection (narrow regex)
+    is_injection, matched = detect_injection(clean_query)
+    if is_injection:
+        print(f"Blocked injection attempt. Matched: {matched}")
+        raise HTTPException(status_code=400, detail="Your query could not be processed due to safety constraints.")
+
     try:
         job_service = JobService()
         await job_service.create_job(
-            job_id, request.query, request.chat_id, request.is_agentic
+            job_id, clean_query, request.chat_id, request.is_agentic
         )
 
         return AskResponse(job_id=job_id)
