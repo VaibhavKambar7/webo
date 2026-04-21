@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Literal, Dict, Any
+from backend.app.utils.token import count_token
 import re
 
 # --- API Schemas ---
@@ -18,6 +19,10 @@ class QueryRequest(BaseModel):
         v = v.strip()
         if not v:
             raise ValueError("Query cannot be empty")
+        
+        token_count = count_token(v)
+        if token_count > 1000:
+            raise ValueError(f"Query too long ({token_count} tokens, max 1000)")
         return v
 
     @field_validator("chat_id")
