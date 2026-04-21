@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from backend.app.core.database import engine, Base
 from backend.app.guardrails.sanitizer import sanitize_input, contains_encoding_attack
 from backend.app.guardrails.injection_guard import detect_injection
+from backend.app.guardrails.moderation import check_moderation
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -77,6 +78,9 @@ async def ask_question(request: QueryRequest, background_tasks: BackgroundTasks)
     if is_injection:
         print(f"Blocked injection attempt. Matched: {matched}")
         raise HTTPException(status_code=400, detail="Your query could not be processed due to safety constraints.")
+
+    # 3. Content Moderation (Toxic, Self-Harm, Violence)
+    await check_moderation(clean_query)
 
     try:
         job_service = JobService()
