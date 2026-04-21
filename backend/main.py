@@ -96,9 +96,10 @@ async def create_chat_id():
 
 
 @app.get("/stream/{job_id}")
-async def event_streamer(job_id: str):
+async def event_streamer(job_id: uuid.UUID):
+    job_id_str = str(job_id)
     async def event_stream():
-        orchestrator = Orchestrator(job_id)
+        orchestrator = Orchestrator(job_id_str)
 
         try:
             async for state in orchestrator.run_full_query():
@@ -125,10 +126,11 @@ async def event_streamer(job_id: str):
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 @app.get("/traces/{job_id}")
-async def get_trace(job_id: str):
+async def get_trace(job_id: uuid.UUID):
     """
     Returns the trace JSON for a given job.
     """
+    job_id = str(job_id)
     trace_path = f"backend/traces/{job_id}.json"
     if not os.path.exists(trace_path):
         raise HTTPException(status_code=404, detail="Trace not found")
