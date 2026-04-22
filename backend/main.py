@@ -14,6 +14,7 @@ from backend.app.core.database import engine, Base
 from backend.app.guardrails.sanitizer import sanitize_input, contains_encoding_attack
 from backend.app.guardrails.injection_guard import detect_injection
 from backend.app.guardrails.moderation import check_moderation
+from backend.app.guardrails.pii_guard import has_high_risk_pii, redact_medium_pii
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -81,6 +82,14 @@ async def ask_question(request: QueryRequest, background_tasks: BackgroundTasks)
 
     # 3. Content Moderation (Toxic, Self-Harm, Violence)
     await check_moderation(clean_query)
+
+    # 4. PII Guard (High-risk blocking, Medium-risk redaction)
+    has_high_pii, pii_types = has_high_risk_pii(clean_query)
+    if has_high_pii:
+        print(f"Blocked query due to high-risk PII: {pii_types}")
+        raise HTTPException(status_code=400, detail="Query blocked: Contains highly sensitive personal information.")
+    
+    clean_query = redact_medium_pii(clean_query)
 
     try:
         job_service = JobService()
