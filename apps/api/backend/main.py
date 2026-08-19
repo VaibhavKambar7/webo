@@ -1,6 +1,7 @@
 import uuid
 import json
 import os
+from pathlib import Path
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from backend.app.core.schemas import AskResponse, QueryRequest
@@ -159,8 +160,9 @@ async def get_trace(job_id: uuid.UUID):
     Returns the trace JSON for a given job.
     """
     job_id = str(job_id)
-    trace_path = f"backend/traces/{job_id}.json"
-    if not os.path.exists(trace_path):
+    trace_dir = Path(__file__).resolve().parent / "traces"
+    trace_path = trace_dir / f"{job_id}.json"
+    if not trace_path.exists():
         raise HTTPException(status_code=404, detail="Trace not found")
         
     with open(trace_path, "r") as f:

@@ -7,11 +7,11 @@ __pycache__/
 env/
 venv/
 .venv/
-backend/webo/
-backend/webo/lib/
-backend/webo/lib64/
-backend/webo/bin/
-backend/webo/pyvenv.cfg
+apps/api/.venv/
+apps/api/.venv/lib/
+apps/api/.venv/lib64/
+apps/api/.venv/bin/
+apps/api/.venv/pyvenv.cfg
 ENV/
 .Python
 *.egg-info/

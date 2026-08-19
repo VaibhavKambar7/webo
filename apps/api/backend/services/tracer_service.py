@@ -1,6 +1,7 @@
 import json
 import os
 import uuid
+from pathlib import Path
 from typing import Any
 from datetime import datetime
 from dataclasses import asdict
@@ -13,7 +14,8 @@ class TracerService:
         self.job_id = job_id
         self.trace_id = self._generate_id()
         self.created_at = datetime.utcnow().isoformat()
-        self.path = f"backend/traces/{job_id}.json"
+        trace_dir = Path(__file__).resolve().parent.parent / "traces"
+        self.path = str(trace_dir / f"{job_id}.json")
         self.spans: dict[str, TraceSpan] = {}
 
     def start_span(
@@ -116,7 +118,7 @@ class TracerService:
         return str(uuid.uuid4())
 
     def _save(self, trace_data: dict):
-        os.makedirs("backend/traces", exist_ok=True)
+        os.makedirs(Path(self.path).parent, exist_ok=True)
 
         with open(self.path, "w") as f:
             json.dump(trace_data, f, indent=2)

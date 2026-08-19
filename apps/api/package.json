@@ -1,0 +1,11 @@
+{
+  "name": "api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "python -m uvicorn backend.main:app --reload",
+    "start": "python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000",
+    "lint": "python -m ruff check .",
+    "format": "python -m ruff format ."
+  }
+}

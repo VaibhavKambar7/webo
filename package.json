@@ -1,0 +1,18 @@
+{
+  "name": "webo",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev:web",
+    "dev:api": "cd apps/api && python -m uvicorn backend.main:app --reload",
+    "dev:web": "npm run dev --workspace web",
+    "build": "npm run build:web",
+    "build:web": "npm run build --workspace web",
+    "typecheck": "npm run typecheck:web",
+    "typecheck:web": "npm run typecheck --workspace web"
+  }
+}
