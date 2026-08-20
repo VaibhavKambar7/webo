@@ -83,6 +83,7 @@ class JobService:
             "SYNTHESIZING",
             "COMPLETED",
             "FAILED",
+            "CANCELLED",
         ]
 
         if status not in valid_statuses:

@@ -10,8 +10,13 @@ from backend.services.usage_tracker import UsageTracker
 import asyncio
 from urllib.parse import urlparse, urlunparse
 
+
+class JobCancelledError(Exception):
+    pass
+
+
 class Orchestrator:
-    def __init__(self, job_id: str):
+    def __init__(self, job_id: str, cancel_event: asyncio.Event | None = None):
         self.job_id = job_id
         self.job_service = JobService()
         self.agent = AgentService()
@@ -22,6 +27,11 @@ class Orchestrator:
         self.decompose = None
         self.query_router = None
         self.max_iterations = 10
+        self.cancel_event = cancel_event
+
+    async def _ensure_not_cancelled(self):
+        if self.cancel_event and self.cancel_event.is_set():
+            raise JobCancelledError("Job cancelled by user.")
 
     async def run_full_query(self):
         """main workflow to run the entire query process."""
@@ -31,6 +41,7 @@ class Orchestrator:
         self.root_span_id = root_span.span_id
 
         try:
+            await self._ensure_not_cancelled()
             state = await self.job_service.get_job_state(self.job_id)
             self.chat_id = state.chat_id
             self.is_agentic = state.is_agentic
@@ -46,6 +57,7 @@ class Orchestrator:
             self.query_router = QueryRouterService(self.chat_id)
 
             state.status = "WORKING"
+            await self.job_service.update_job_state(state)
             yield state
 
             if state.is_agentic:
@@ -58,6 +70,22 @@ class Orchestrator:
             self.tracer.set_attributes(root_span.span_id, self.usage.get_summary())
             self.tracer.finish_span(root_span.span_id, status="ok")
 
+        except (JobCancelledError, asyncio.CancelledError):
+            self.tracer.add_event(root_span.span_id, "job.cancelled")
+            self.tracer.finish_span(
+                root_span.span_id,
+                status="cancelled",
+                error="Job cancelled by user.",
+            )
+
+            try:
+                state = await self.job_service.get_job_state(self.job_id)
+                state.status = "CANCELLED"
+                state.error = "Job cancelled by user."
+                await self.job_service.update_job_state(state)
+                yield state
+            except Exception:
+                pass
         except Exception as e:
             import traceback
 
@@ -81,6 +109,7 @@ class Orchestrator:
             iteration = 0
 
             while iteration < self.max_iterations:
+                await self._ensure_not_cancelled()
                 iteration += 1
                 state.loop_count = iteration 
 
@@ -97,6 +126,7 @@ class Orchestrator:
                 })
 
                 try:
+                    await self._ensure_not_cancelled()
                     action_decision, think_usage = await self.agent.think(
                         sub_query=state.original_query,
                         memory=state.memory,
@@ -183,6 +213,7 @@ class Orchestrator:
                         async for chunk in self.synthesis.summarize_stream(
                             state.original_query, state.memory
                         ):
+                            await self._ensure_not_cancelled()
                             state.final_answer += chunk
                             yield state
                         self.tracer.add_event(finalize_span.span_id, "synthesis.finished_stream")
@@ -217,6 +248,7 @@ class Orchestrator:
                 })
 
                 try:
+                    await self._ensure_not_cancelled()
                     observation, results = await self.tool.execute(
                         tool_name,
                         tool_input,
@@ -289,6 +321,7 @@ class Orchestrator:
 
         try:
             try:
+                await self._ensure_not_cancelled()
                 response, router_usage = await self.query_router.route(state.original_query)
                 self.usage.record_llm_call("workflow.route_query", "gemini-2.5-flash-lite", router_usage.get("input_tokens", 0), router_usage.get("output_tokens", 0))
             except Exception as e:
@@ -336,6 +369,7 @@ class Orchestrator:
                 state.status = "DECOMPOSING"
                 yield state
 
+                await self._ensure_not_cancelled()
                 sub_queries, decompose_usage = await self.decompose.split_into_search_queries(
                     state.original_query
                 )
@@ -357,6 +391,7 @@ class Orchestrator:
                 yield state
 
                 async def process_query(query):
+                    await self._ensure_not_cancelled()
                     search_span = self.tracer.start_span("workflow.web_search", parent_span_id=self.root_span_id, attributes={
                         "search.query": query,
                     })
@@ -431,6 +466,7 @@ class Orchestrator:
                     state.original_query,
                     state.memory,
                 ):
+                    await self._ensure_not_cancelled()
                     state.final_answer += chunk
                     yield state
                 self.tracer.add_event(synth_span.span_id, "synthesis.finished_stream")
@@ -459,6 +495,7 @@ class Orchestrator:
                 async for chunk in self.synthesis.respond_from_context_stream(
                     state.original_query, route
                 ):
+                    await self._ensure_not_cancelled()
                     state.final_answer += chunk
                     yield state
                 

@@ -1,14 +1,13 @@
 import uuid
 import json
-import os
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.core.schemas import AskResponse, QueryRequest
+from backend.app.core.schemas import AskResponse, QueryRequest, StatusResponse
 from pydantic import BaseModel
 from backend.app.services.job_service import JobService
+from backend.app.services.job_runtime_service import job_runtime_service
 from backend.app.services.chat_service import ChatService
-from backend.orchestrator import Orchestrator
 from fastapi.responses import StreamingResponse
 from contextlib import asynccontextmanager
 from backend.app.core.database import engine, Base
@@ -62,7 +61,7 @@ async def get_chats(request: GetChatRequest):
 
 
 @app.post("/ask", response_model=AskResponse)
-async def ask_question(request: QueryRequest, background_tasks: BackgroundTasks):
+async def ask_question(request: QueryRequest):
     """
     submits a new query and returns a job_id for streaming.
     """
@@ -97,6 +96,7 @@ async def ask_question(request: QueryRequest, background_tasks: BackgroundTasks)
         await job_service.create_job(
             job_id, clean_query, request.chat_id, request.is_agentic
         )
+        await job_runtime_service.start_job(job_id)
 
         return AskResponse(job_id=job_id)
 
@@ -127,11 +127,10 @@ async def create_chat_id():
 @app.get("/stream/{job_id}")
 async def event_streamer(job_id: uuid.UUID):
     job_id_str = str(job_id)
-    async def event_stream():
-        orchestrator = Orchestrator(job_id_str)
 
+    async def event_stream():
         try:
-            async for state in orchestrator.run_full_query():
+            async for state in job_runtime_service.subscribe(job_id_str):
                 memory_dicts = (
                     [step.model_dump() for step in state.memory] if state.memory else []
                 )
@@ -143,6 +142,7 @@ async def event_streamer(job_id: uuid.UUID):
                     "sub_queries": state.sub_queries,
                     "sources": state.sources,
                     "memory": memory_dicts,
+                    "error": state.error,
                 }
 
                 yield f"data:{json.dumps(state_dict)}\n\n"
@@ -153,6 +153,26 @@ async def event_streamer(job_id: uuid.UUID):
             yield f"data:{json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@app.post("/jobs/{job_id}/cancel", response_model=StatusResponse)
+async def cancel_job(job_id: uuid.UUID):
+    try:
+        state = await job_runtime_service.cancel_job(str(job_id))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error cancelling job: {e}")
+
+    return StatusResponse(
+        job_id=state.job_id,
+        status=state.status,
+        original_query=state.original_query,
+        final_answer=state.final_answer,
+        sub_queries=state.sub_queries,
+        sources=state.sources,
+        memory=[step.model_dump() for step in state.memory],
+    )
 
 @app.get("/traces/{job_id}")
 async def get_trace(job_id: uuid.UUID):

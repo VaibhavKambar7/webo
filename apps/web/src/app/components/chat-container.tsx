@@ -75,6 +75,8 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const activeJobIdRef = useRef<string | null>(null);
 
   const adjustHeight = () => {
     const textarea = textareaRef.current;
@@ -112,6 +114,13 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
   }, [loading]);
 
   useEffect(() => {
+    return () => {
+      eventSourceRef.current?.close();
+      eventSourceRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
     let value = localStorage.getItem("webo-theme");
     if (value === "light" || value === "dark") {
       setTheme(value);
@@ -124,7 +133,10 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
 
   const eventStreamer = async (jobId: string, assistantMessageId: string) => {
     try {
+      eventSourceRef.current?.close();
       const eventSource = new EventSource(`${apiBaseUrl}/stream/${jobId}`);
+      eventSourceRef.current = eventSource;
+      activeJobIdRef.current = jobId;
 
       eventSource.onmessage = (e) => {
         const data = JSON.parse(e.data);
@@ -144,6 +156,7 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
           currentAssistantMessage.thinkingSteps = data.memory || [];
           currentAssistantMessage.subQueries = data.sub_queries || [];
           currentAssistantMessage.sources = data.sources || [];
+          currentAssistantMessage.error = data.error;
 
           if (data.final_answer && !currentAssistantMessage.content) {
             currentAssistantMessage.isExpanded = false;
@@ -153,11 +166,23 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
             currentAssistantMessage.content = data.final_answer;
           }
 
+          if (data.status === "CANCELLED" && !currentAssistantMessage.content) {
+            currentAssistantMessage.content = "Search was stopped before completion.";
+          }
+
+          if (data.status === "FAILED" && data.error && !currentAssistantMessage.content) {
+            currentAssistantMessage.content = data.error;
+          }
+
           return updatedMessages;
         });
 
         if (data.status === "COMPLETED" || data.status === "FAILED") {
           eventSource.close();
+          if (eventSourceRef.current === eventSource) {
+            eventSourceRef.current = null;
+            activeJobIdRef.current = null;
+          }
           setLoading(false);
 
           if (data.status === "COMPLETED") {
@@ -174,11 +199,23 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
             setError("Job failed. Please try again.");
           }
         }
+        if (data.status === "CANCELLED") {
+          eventSource.close();
+          if (eventSourceRef.current === eventSource) {
+            eventSourceRef.current = null;
+            activeJobIdRef.current = null;
+          }
+          setLoading(false);
+        }
       };
 
       eventSource.onerror = (error) => {
         console.error("EventSource error:", error);
         eventSource.close();
+        if (eventSourceRef.current === eventSource) {
+          eventSourceRef.current = null;
+          activeJobIdRef.current = null;
+        }
         setError("Connection lost. Please try again.");
         setLoading(false);
       };
@@ -299,22 +336,32 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
     }
   };
 
-  const stopSearch = () => {
-    setLoading(false);
-    setMessages((prevMessages) => {
-      const updatedMessages = [...prevMessages];
-      const lastAssistantMessageIndex = updatedMessages.findLastIndex(
-        (msg) => msg.role === "assistant",
-      );
-      if (lastAssistantMessageIndex !== -1) {
-        updatedMessages[lastAssistantMessageIndex].status = "STOPPED";
-        if (!updatedMessages[lastAssistantMessageIndex].content) {
-          updatedMessages[lastAssistantMessageIndex].content =
-            "Search was stopped.";
-        }
+  const stopSearch = async () => {
+    const activeJobId = activeJobIdRef.current;
+    if (!activeJobId) return;
+
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        msg.jobId === activeJobId ? { ...msg, status: "CANCELLING" } : msg,
+      ),
+    );
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/jobs/${activeJobId}/cancel`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to cancel job");
       }
-      return updatedMessages;
-    });
+    } catch (err) {
+      setError("Failed to stop search. Please try again.");
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg.jobId === activeJobId ? { ...msg, status: "WORKING" } : msg,
+        ),
+      );
+    }
   };
 
   const toggleExpansion = (messageId: string) => {
@@ -362,6 +409,16 @@ export default function ChatContainer({ initialChatId }: ChatContainerProps) {
       },
       COMPLETED: { label: "Completed", icon: null, color: "text-emerald-600" },
       FAILED: { label: "Failed", icon: AlertCircle, color: "text-rose-600" },
+      CANCELLING: {
+        label: "Stopping search...",
+        icon: Loader,
+        color: "text-amber-600",
+      },
+      CANCELLED: {
+        label: "Stopped",
+        icon: StopCircle,
+        color: "text-amber-600",
+      },
       STOPPED: { label: "Stopped", icon: StopCircle, color: "text-amber-600" },
     };
 

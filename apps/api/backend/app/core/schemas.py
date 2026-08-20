@@ -39,7 +39,7 @@ class AskResponse(BaseModel):
 class StatusResponse(BaseModel):
     job_id: str
     status: Literal[
-        "PENDING", "DECOMPOSING", "WORKING", "SYNTHESIZING", "COMPLETED", "FAILED"
+        "PENDING", "DECOMPOSING", "WORKING", "SYNTHESIZING", "COMPLETED", "FAILED", "CANCELLED"
     ]
     original_query: str
     final_answer: Optional[str] = None
@@ -52,7 +52,7 @@ class ChatState(BaseModel):
     chat_id: str
     # job_ids: List[str] = []
     summary: Optional[str] = None
-    recent_convo: List[Dict[str, Any]] = []
+    recent_convo: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 # internal state schemas
@@ -81,15 +81,15 @@ class JobState(BaseModel):
     status: str = "PENDING"
     original_query: str
     is_agentic: bool = False
-    sub_queries: List[str] = []
-    memory: List[ReActStep] = []
-    sources: List[Dict[str, Any]] = []
+    sub_queries: List[str] = Field(default_factory=list)
+    memory: List[ReActStep] = Field(default_factory=list)
+    sources: List[Dict[str, Any]] = Field(default_factory=list)
     final_answer: Optional[str] = None
     error: Optional[str] = None
     loop_count: int = 0
     search_count: int = 0
     confidence: float = 0.0
-    confidence_history: List[float] = []
+    confidence_history: List[float] = Field(default_factory=list)
     has_new_evidence: bool = False
     new_evidence_count: int = 0
     total_retries: int = 0
